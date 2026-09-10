@@ -1,7 +1,9 @@
-.PHONY: build clean test test-race test-coverage test-coverage-check test-fuzz bench install check ci fmt imports fumpt staticcheck revive vet errcheck nilaway gosec ineffassign deadcode govulncheck
+.PHONY: gen gen-check build clean test test-race test-coverage test-coverage-check test-fuzz bench install check ci fmt imports fumpt staticcheck revive vet errcheck nilaway gosec ineffassign deadcode govulncheck
 
 # Build variables
-BINARY_NAME=maestro-runner
+# maestro-daemon is maestro-runner plus the daemon commands; it installs next
+# to maestro-runner and shares its home (drivers/, cache/).
+BINARY_NAME=maestro-daemon
 VERSION?=$(shell git describe --tags --always --dirty 2>/dev/null || echo "dev")
 COMMIT?=$(shell git rev-parse --short HEAD 2>/dev/null || echo "none")
 BUILD_DATE?=$(shell date -u +"%Y-%m-%dT%H:%M:%SZ")
@@ -23,6 +25,13 @@ GOMOD=$(GOCMD) mod
 
 # Build targets
 all: build
+
+# Regenerate the command tables (Go, TypeScript, docs) from the flow parser.
+gen:
+	$(GOCMD) run ./pkg/daemon/gen
+
+gen-check:
+	$(GOCMD) run ./pkg/daemon/gen -check
 
 build:
 	$(GOBUILD) $(LDFLAGS) -o $(BINARY_NAME) .
