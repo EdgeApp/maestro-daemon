@@ -1,3 +1,20 @@
+> **This is [maestro-d](https://github.com/EdgeApp/maestro-d)** — a fork of
+> [maestro-runner](https://github.com/devicelab-dev/maestro-runner) that adds a persistent
+> daemon so every Maestro YAML command can be run one at a time from a shell, over REST, or
+> from JavaScript, without writing a flow file:
+>
+> ```sh
+> maestro-d launchApp co.edgesecure.app --device 29271FDH200ABP
+> maestro-d tapOn "Create account"
+> maestro-d assertVisible "Welcome" --timeout 5000
+> ```
+>
+> Everything upstream does still works unchanged (`maestro-d test flows/`). See
+> [docs/daemon/README.md](docs/daemon/README.md) for the daemon, [CLI](docs/daemon/cli.md),
+> [REST](docs/daemon/rest.md), [JavaScript](docs/daemon/js.md) and the
+> [command reference](docs/daemon/commands.md); [UPSTREAM.md](docs/daemon/UPSTREAM.md)
+> lists the upstream files this fork touches. The rest of this README is upstream's.
+
 <div align="center">
 
 # maestro-runner
