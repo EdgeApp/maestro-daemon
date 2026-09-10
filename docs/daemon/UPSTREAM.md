@@ -36,7 +36,9 @@ Everything else is new:
 | `pkg/daemon/gen/` | Generator: reflects over the step structs → `commands_gen.go`, `npm/maestro-daemon/src/generated/commands.ts`, `docs/daemon/commands.md` |
 | `pkg/cli/daemon.go`, `daemon_flags.go`, `daemon_wiring.go`, `oneshot.go` | CLI: `start`/`serve`/`stop`/`status`/`ps`/`device`/`attach`/`detach`/`run`/`get`/`set`/`eval`/`commands` and one command per YAML step type |
 | `pkg/cli/daemon_e2e_test.go` | Binary-level test against the mock driver |
-| `npm/maestro-daemon/` | The JavaScript library and npm packaging |
+| `npm/maestro-daemon/` | The JavaScript library |
+| `npm/build-daemon-npm.sh` | Cross-compiles the binary into per-platform npm packages and packs the library (`npm/build-npm.sh` is upstream's, for maestro-runner's own package) |
+| `.github/workflows/daemon.yml` | The fork's checks and `daemon-v*` release workflow (`ci.yml` is upstream's) |
 | `docs/daemon/` | These docs |
 
 ## Upstream seams the daemon depends on
