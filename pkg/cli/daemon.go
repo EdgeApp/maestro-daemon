@@ -966,6 +966,8 @@ func isStepList(data []byte) bool {
 var getFlags = flagSet(daemonSelectFlags, daemonSpawnFlags, one(deviceFlag), attachFlags, []dflag{
 	strFlag("out", "Write the screenshot to this file (default screenshot-<time>.png; '-' for stdout)", nil, func(o *daemonOpts, v string) { o.outPath = v }, "o"),
 	boolFlag("raw", "Hierarchy as the driver's raw XML/JSON instead of the normalized tree", nil, func(o *daemonOpts, v bool) { o.force = v }),
+	boolFlag("compact", "Hierarchy as a flat, greppable listing (as `hierarchy --compact`)", nil, func(o *daemonOpts, v bool) { o.compact = v }),
+	strFlag("find", "Hierarchy elements matching a substring (as `hierarchy --find`)", nil, func(o *daemonOpts, v string) { o.find = v }),
 })
 
 var daemonGetCommand = &cli.Command{
@@ -974,6 +976,7 @@ var daemonGetCommand = &cli.Command{
 	ArgsUsage: "screenshot | hierarchy | state | info | vars",
 	Description: flagsDoc(`  maestro-daemon get screenshot -o now.png
   maestro-daemon get hierarchy | jq '.. | .text? // empty'
+  maestro-daemon get hierarchy --find "Sign in"
   maestro-daemon get state      # foreground app, orientation, …
   maestro-daemon get info       # platform, OS version, device name, app version
   maestro-daemon get vars       # session variables (from -e and copyTextFrom/outputs)`, getFlags),
@@ -1011,15 +1014,24 @@ var daemonGetCommand = &cli.Command{
 				fmt.Println(abs)
 			}
 		case "hierarchy":
-			if o.force {
+			if o.force || o.compact || o.find != "" {
 				raw, err := client.HierarchyRaw(ctx, id)
 				if err != nil {
 					return err
 				}
-				os.Stdout.Write(raw)
-				if len(raw) > 0 && raw[len(raw)-1] != '\n' {
-					fmt.Println()
+				if o.force {
+					os.Stdout.Write(raw)
+					if len(raw) > 0 && raw[len(raw)-1] != '\n' {
+						fmt.Println()
+					}
+					return nil
 				}
+				// Same renderer as `maestro-runner hierarchy`.
+				text, err := formatHierarchy(raw, o.compact, o.find)
+				if err != nil {
+					return daemon.WrapErr(daemon.CodeDeviceError, err)
+				}
+				fmt.Println(text)
 				return nil
 			}
 			v, err := client.Hierarchy(ctx, id)

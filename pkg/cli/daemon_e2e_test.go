@@ -207,7 +207,22 @@ func TestE2E_OneShotLifecycle(t *testing.T) {
 	if !strings.Contains(r.stdout, `"mock"`) {
 		t.Fatalf("info: %s", r.stdout)
 	}
-	e.ok("get", "hierarchy")
+	r = e.ok("get", "hierarchy")
+	if !strings.Contains(r.stdout, `"text": "Mock Element"`) {
+		t.Fatalf("hierarchy: %s", r.stdout)
+	}
+	r = e.ok("get", "hierarchy", "--find", "mock el")
+	if !strings.Contains(r.stdout, "Mock Element") || strings.Contains(r.stdout, "{") {
+		t.Fatalf("hierarchy --find: %s", r.stdout)
+	}
+	r = e.ok("get", "hierarchy", "--compact")
+	if !strings.Contains(r.stdout, "Button") || strings.Contains(r.stdout, "{") {
+		t.Fatalf("hierarchy --compact: %s", r.stdout)
+	}
+	r = e.ok("get", "hierarchy", "--raw")
+	if !strings.Contains(r.stdout, `"type": "View"`) {
+		t.Fatalf("hierarchy --raw: %s", r.stdout)
+	}
 	e.ok("get", "state")
 
 	// Steps list via run - and a flow file.

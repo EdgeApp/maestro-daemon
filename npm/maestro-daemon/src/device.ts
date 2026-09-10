@@ -9,6 +9,7 @@ import type {
   DaemonEvent,
   DeviceInfo,
   Envelope,
+  HierarchyNode,
   PlatformInfo,
   Step,
   StepResult,
@@ -224,9 +225,9 @@ export class MaestroDevice {
     return this.transport.bytes(`${this.base}/screenshot`, { accept: 'image/png', signal: this.sig(opts) })
   }
 
-  /** View hierarchy: parsed JSON (iOS, mock) or XML text (Android). */
-  async hierarchy(opts: CallOptions = {}): Promise<unknown> {
-    const res = await this.transport.json<Envelope & { data: unknown }>(`${this.base}/hierarchy`, { signal: this.sig(opts) })
+  /** View hierarchy as the normalized cross-platform tree (`maestro-runner hierarchy`'s shape). */
+  async hierarchy(opts: CallOptions = {}): Promise<HierarchyNode> {
+    const res = await this.transport.json<Envelope & { data: HierarchyNode }>(`${this.base}/hierarchy`, { signal: this.sig(opts) })
     return res.data
   }
 

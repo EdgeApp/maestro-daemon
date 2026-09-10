@@ -161,6 +161,20 @@ export interface StepsResult extends Envelope {
 // ---------------------------------------------------------------------------
 // Devices
 
+/** A node of the normalized view hierarchy: the same shape for every platform. */
+export interface HierarchyNode {
+  type?: string
+  id?: string
+  text?: string
+  bounds?: { x: number; y: number; width: number; height: number }
+  /** Only present when notable: enabled false, checked for checkables, selected/focused true. */
+  enabled?: boolean
+  checked?: boolean
+  selected?: boolean
+  focused?: boolean
+  children?: HierarchyNode[]
+}
+
 export interface DeviceInfo {
   id: string
   /** android | ios | web | mock */

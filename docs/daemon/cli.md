@@ -155,7 +155,7 @@ maestro-daemon attach --device mock-1 --platform mock      # a fake device for t
 | --- | --- |
 | `run FILE\|-  [-e K=V] [--continue-on-error]` | a file with a config header (`appId:` / `---`) runs as a flow, hooks and flow env included; a bare YAML list runs step by step in the session |
 | `get screenshot [-o FILE\|-]` | PNG (default `screenshot-<time>.png`) |
-| `get hierarchy [--raw]` | view hierarchy as JSON (`--raw`: the driver's own XML/JSON) |
+| `get hierarchy [--compact \| --find TEXT \| --raw]` | view hierarchy as the normalized JSON tree; `--compact` flat listing, `--find` matching elements (as `maestro-runner hierarchy`); `--raw` the driver's own XML/JSON |
 | `get state` | foreground app, orientation, … |
 | `get info` | platform, OS version, device name, app version |
 | `get vars` | session variables |
@@ -166,6 +166,7 @@ maestro-daemon attach --device mock-1 --platform mock      # a fake device for t
 printf -- '- launchApp\n- tapOn: Login\n' | maestro-daemon run -
 maestro-daemon run flows/login.yaml -e USER=alice
 maestro-daemon get hierarchy | jq '.. | .text? // empty'
+maestro-daemon get hierarchy --find "Sign in"
 maestro-daemon set USER=alice PIN=1234
 maestro-daemon eval 'maestro.copiedText'
 ```

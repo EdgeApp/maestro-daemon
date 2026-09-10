@@ -756,9 +756,16 @@ func (s *Server) handleHierarchy(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	var parsed any
-	if err := json.Unmarshal(data, &parsed); err != nil {
-		// XML (Android) or other text: return it as a string.
-		parsed = string(data)
+	if s.deps.NormalizeHierarchy != nil {
+		if tree, err := s.deps.NormalizeHierarchy(data); err == nil {
+			parsed = tree
+		}
+	}
+	if parsed == nil {
+		if err := json.Unmarshal(data, &parsed); err != nil {
+			// XML (Android) or other text: return it as a string.
+			parsed = string(data)
+		}
 	}
 	writeJSON(w, http.StatusOK, DataResult{Envelope: Envelope{OK: true}, Data: parsed})
 }

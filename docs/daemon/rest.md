@@ -350,9 +350,18 @@ curl -s -H "$H" $D/v1/devices/29271FDH200ABP/screenshot -o now.png
 
 ### `GET /v1/devices/{id}/hierarchy`
 
-`{"ok": true, "data": …}` where `data` is the parsed hierarchy (a JSON
-object for iOS/web; for Android the driver's XML as a string).
-`?format=raw` returns the driver's own document with its content type.
+`{"ok": true, "data": {…}}` where `data` is the normalized tree
+`maestro-runner hierarchy` prints — the same shape on every platform:
+
+```json
+{ "type": "FrameLayout", "bounds": {"x": 0, "y": 0, "width": 1080, "height": 2400},
+  "children": [ { "type": "Button", "id": "login_btn", "text": "Login", "bounds": {…} }, … ] }
+```
+
+Nodes carry `type`, `id`, `text`, `bounds` and `children`; `enabled`
+(false), `checked`, `selected` and `focused` (true) only when notable.
+`?format=raw` returns the driver's own document (UIAutomator/WDA XML or
+JSON) with its content type.
 
 ### `GET /v1/devices/{id}/state`
 

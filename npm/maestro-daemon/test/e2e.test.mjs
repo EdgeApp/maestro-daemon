@@ -341,7 +341,8 @@ describe('device state', () => {
 
   test('hierarchy(), state() and platformInfo()', async () => {
     const h = await dev.hierarchy()
-    assert.equal(typeof h, 'object')
+    assert.equal(h.type, 'View')
+    assert.equal(h.children[0].text, 'Mock Element')
     const raw = await dev.hierarchyRaw()
     assert.ok(raw.length > 0)
     const st = await dev.state()
