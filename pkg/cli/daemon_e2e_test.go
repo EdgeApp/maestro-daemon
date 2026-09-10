@@ -179,6 +179,14 @@ func TestE2E_OneShotLifecycle(t *testing.T) {
 	if envelopeCode(t, r.stderr) != daemon.CodeUsage {
 		t.Fatal("expected USAGE for unknown field")
 	}
+	// No value at all: fine where the scalar has a default (`- launchApp`
+	// uses the attach app id), a usage error elsewhere.
+	e.ok("launchApp")
+	e.ok("takeScreenshot")
+	r = e.fails(2, "tapOn", "--json")
+	if envelopeCode(t, r.stderr) != daemon.CodeUsage || !strings.Contains(r.stderr, "needs a value") {
+		t.Fatalf("expected USAGE for bare tapOn: %s", r.stderr)
+	}
 
 	// Vars / eval.
 	e.ok("set", "A=1", "B=two")

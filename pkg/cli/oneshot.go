@@ -55,6 +55,17 @@ func oneShotCommands() []*cli.Command {
 	return cmds
 }
 
+// valueOptional lists the commands that are meaningful with no value at all
+// (`- launchApp` in YAML): the scalar has a default — the attach --app-id,
+// the report's screenshot path, scrolling down, erasing 50 characters.
+// Every other command needs a value or a field, so a bare `maestro-d
+// tapOn` is a usage error rather than a step that fails on the device.
+var valueOptional = map[string]bool{
+	"launchApp": true, "stopApp": true, "killApp": true, "clearState": true,
+	"takeScreenshot": true, "scroll": true, "eraseText": true,
+	"waitForAnimationToEnd": true, "stopRecording": true,
+}
+
 func oneShotArgsUsage(spec daemon.CommandSpec) string {
 	switch {
 	case spec.ValueLess:
@@ -78,6 +89,9 @@ func commandHelp(spec daemon.CommandSpec) string {
 		return b.String()
 	case spec.Scalar != "":
 		fmt.Fprintf(&b, "A bare value sets %q: maestro-d %s VALUE  ≡  - %s: VALUE\n", spec.Scalar, spec.Name, spec.Name)
+	}
+	if valueOptional[spec.Name] {
+		fmt.Fprintf(&b, "The value may be omitted: maestro-d %s  ≡  - %s\n", spec.Name, spec.Name)
 	}
 	if spec.Compound {
 		fmt.Fprintf(&b, "Nested steps are passed with --yaml FILE (or - for stdin) holding the command's YAML value.\n")
@@ -229,6 +243,9 @@ func buildStepValue(spec daemon.CommandSpec, p *parsedArgs) (any, error) {
 		value = m
 	default:
 		if !needMap {
+			if valueOptional[spec.Name] {
+				return nil, nil
+			}
 			return nil, usage("%s needs a value: %s", spec.Name, oneShotArgsUsage(spec))
 		}
 		value = map[string]any{}

@@ -28,6 +28,10 @@ Rules:
 - **Bare value → scalar field.** Which field is shown by `--help`
   ("A bare value sets `text`") and in [commands.md](commands.md). Commands
   without one (`setLocation`, `assertCondition`, …) take fields only.
+- **No value at all** is allowed where YAML allows it: `launchApp`,
+  `stopApp`, `killApp`, `clearState` (the attach `--app-id`),
+  `takeScreenshot`, `scroll`, `eraseText`, `waitForAnimationToEnd`,
+  `stopRecording`. Anything else without a value or field is `USAGE`.
 - **Nested fields** use dots: `--childOf.id container`,
   `--visible.text "Loading"` (for `extendedWaitUntil`).
 - **Lists and maps** are JSON or YAML in one argument:
