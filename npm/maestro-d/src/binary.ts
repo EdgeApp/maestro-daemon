@@ -1,0 +1,94 @@
+// Locating the maestro-d Go binary.
+//
+// Order: $MAESTRO_D_BIN → the per-platform npm package installed as an
+// optional dependency → `maestro-d` on $PATH. Nothing is downloaded at
+// install time; npm picks the platform package from the lockfile.
+
+import * as fs from 'node:fs'
+import { createRequire } from 'node:module'
+import * as path from 'node:path'
+
+import { MaestroError } from './errors.js'
+import { ENV_BIN } from './runfiles.js'
+
+/** npm uses Node's process.arch names, so x64 rather than Go's amd64. */
+export const PACKAGE_BY_TARGET: Record<string, string> = {
+  'darwin-arm64': 'maestro-d-darwin-arm64',
+  'darwin-x64': 'maestro-d-darwin-x64',
+  'linux-arm64': 'maestro-d-linux-arm64',
+  'linux-x64': 'maestro-d-linux-x64',
+}
+
+export function target(): string {
+  return `${process.platform}-${process.arch}`
+}
+
+function isExecutable(p: string): boolean {
+  try {
+    fs.accessSync(p, fs.constants.X_OK)
+    return fs.statSync(p).isFile()
+  } catch {
+    return false
+  }
+}
+
+/** The bundled platform package's binary, or undefined when not installed. */
+export function bundledBinary(): string | undefined {
+  const pkg = PACKAGE_BY_TARGET[target()]
+  if (!pkg) return undefined
+  // Resolve the package's manifest rather than a main entry (it has none).
+  // A registry install puts it beside maestro-d in the consumer's
+  // node_modules, which is reachable from the cwd and from the entry script;
+  // both are searched so `npm link` and monorepos work too.
+  const entry = process.argv[1]
+  const roots = entry ? [process.cwd(), path.dirname(path.resolve(entry))] : [process.cwd()]
+  for (const from of roots) {
+    try {
+      const resolver = createRequire(path.join(from, 'noop.js'))
+      const manifest = resolver.resolve(`${pkg}/package.json`)
+      const bin = path.join(path.dirname(manifest), 'bin', 'maestro-d')
+      if (isExecutable(bin)) return bin
+    } catch {
+      // not here
+    }
+  }
+  return undefined
+}
+
+/** First `maestro-d` on $PATH, or undefined. */
+export function pathBinary(): string | undefined {
+  const dirs = (process.env.PATH ?? '').split(path.delimiter).filter(Boolean)
+  for (const dir of dirs) {
+    const p = path.join(dir, 'maestro-d')
+    if (isExecutable(p)) return p
+  }
+  return undefined
+}
+
+/**
+ * Absolute path of the binary to run. Throws DAEMON_UNAVAILABLE with an
+ * actionable message when none can be found.
+ */
+export function binaryPath(explicit?: string): string {
+  const env = process.env[ENV_BIN]
+  const chosen = explicit || env
+  if (chosen) {
+    if (!isExecutable(chosen)) {
+      throw MaestroError.of('DAEMON_UNAVAILABLE', `${explicit ? 'bin' : ENV_BIN} ${chosen} is not an executable file`)
+    }
+    return chosen
+  }
+  const bundled = bundledBinary()
+  if (bundled) return bundled
+  const onPath = pathBinary()
+  if (onPath) return onPath
+  const pkg = PACKAGE_BY_TARGET[target()]
+  throw MaestroError.of(
+    'DAEMON_UNAVAILABLE',
+    pkg
+      ? `maestro-d binary not found: install ${pkg} (it is an optional dependency of maestro-d; ` +
+          `installs with --no-optional skip it), put maestro-d on PATH, or set ${ENV_BIN}`
+      : `maestro-d has no prebuilt binary for ${target()}; build it from source ` +
+          `(go build -o maestro-d .) and set ${ENV_BIN} or put it on PATH`,
+  )
+}
