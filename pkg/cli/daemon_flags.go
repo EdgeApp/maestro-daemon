@@ -296,6 +296,11 @@ type stepFlag struct {
 	bare  bool // given without a value (→ true)
 }
 
+// isBoolType reports whether a command field's Go type is a bool.
+func isBoolType(goType string) bool {
+	return goType == "bool" || goType == "*bool"
+}
+
 // baseStepFlags are accepted by every one-shot command and merged into the
 // value map; "platform" is shared with the attach flag of the same name.
 var baseStepFlags = map[string]flagKind{"optional": kindBool, "label": kindString, "timeout": kindInt}
@@ -307,8 +312,10 @@ var baseStepFlags = map[string]flagKind{"optional": kindBool, "label": kindStrin
 // Known flags (from the table) fill opts; unknown flags are collected as
 // step fields. A flag without a following value is a boolean true; the
 // following token is taken as the value unless it starts with "--" (a bare
-// "-" or a negative number is still a value).
-func parseDaemonArgs(args []string, flags []dflag, stepKeys map[string]bool) (*daemonOpts, *parsedArgs, error) {
+// "-" or a negative number is still a value). stepKeys maps the command's
+// field names to their Go types so that a bool field never swallows the
+// token after it (`launchApp --clearState co.example`).
+func parseDaemonArgs(args []string, flags []dflag, stepKeys map[string]string) (*daemonOpts, *parsedArgs, error) {
 	byName := map[string]dflag{}
 	for _, f := range flags {
 		byName[f.name] = f
@@ -358,7 +365,7 @@ func parseDaemonArgs(args []string, flags []dflag, stepKeys map[string]bool) (*d
 		// (`openBrowser --url`, `getConsoleLogs --output`); --platform is
 		// both, and -e/--env feeds the step's env map when it has one.
 		f, known := byName[name]
-		if known && name != "platform" && (stepKeys[name] || (f.name == "env" && stepKeys["env"])) {
+		if known && name != "platform" && (stepKeys[name] != "" || (f.name == "env" && stepKeys["env"] != "")) {
 			known = false
 			if f.name == "env" {
 				name = "env"
@@ -424,14 +431,15 @@ func parseDaemonArgs(args []string, flags []dflag, stepKeys map[string]bool) (*d
 			}
 			continue
 		}
-		// Unknown: a step field.
-		if !hasValue {
+		// Unknown: a step field. Bool fields never take the next token.
+		if !hasValue && !isBoolType(stepKeys[name]) {
 			if v, ok := takesValue(args[i+1:]); ok {
-				value, i = v, i+1
-			} else {
-				p.step = append(p.step, stepFlag{key: name, bare: true})
-				continue
+				value, i, hasValue = v, i+1, true
 			}
+		}
+		if !hasValue {
+			p.step = append(p.step, stepFlag{key: name, bare: true})
+			continue
 		}
 		p.step = append(p.step, stepFlag{key: name, value: value})
 	}

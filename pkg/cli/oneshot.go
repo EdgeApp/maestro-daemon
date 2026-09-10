@@ -114,9 +114,9 @@ func runOneShot(spec daemon.CommandSpec, args []string) error {
 			return nil
 		}
 	}
-	stepKeys := map[string]bool{}
+	stepKeys := map[string]string{}
 	for _, f := range spec.Fields {
-		stepKeys[f.Key] = true
+		stepKeys[f.Key] = f.Type
 	}
 	o, p, err := parseDaemonArgs(args, oneShotFlags, stepKeys)
 	if err != nil {

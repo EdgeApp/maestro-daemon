@@ -143,6 +143,14 @@ func TestE2E_OneShotLifecycle(t *testing.T) {
 	if strings.Contains(r.stderr, "Attach") {
 		t.Fatalf("should not re-attach:\n%s", r.stderr)
 	}
+	if !strings.Contains(r.stdout, `id="btn"`) {
+		t.Fatalf("--id should take the next token:\n%s", r.stdout)
+	}
+	// A bool field given bare does not swallow the positional after it.
+	r = e.ok("launchApp", "--clearState", "com.example", "--json")
+	if !strings.Contains(r.stdout, `"clearState": true`) && !strings.Contains(r.stdout, "(clearState)") {
+		t.Fatalf("--clearState should be a bare bool:\n%s", r.stdout)
+	}
 	// Value-less.
 	e.ok("back")
 	// JSON output carries the full result.
