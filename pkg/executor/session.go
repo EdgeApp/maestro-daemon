@@ -393,7 +393,16 @@ func (s *Session) PlatformInfo() *core.PlatformInfo {
 func (s *Session) Vars() map[string]string {
 	s.mu.Lock()
 	defer s.mu.Unlock()
-	return s.fr.script.Variables()
+	// The engine imports the process environment (so ${HOME} works in
+	// flows); hide entries that are still just that, they are noise — and
+	// the daemon's environment is nobody else's business.
+	vars := s.fr.script.Variables()
+	for k, v := range vars {
+		if ev, ok := os.LookupEnv(k); ok && ev == v {
+			delete(vars, k)
+		}
+	}
+	return vars
 }
 
 // SetVar sets a variable visible to ${VAR} expansion and scripts.
