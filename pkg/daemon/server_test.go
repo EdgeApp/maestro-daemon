@@ -277,6 +277,14 @@ func TestServer_Inspection(t *testing.T) {
 	if vars["A"] != "1" || vars["b"] != "12" {
 		t.Fatalf("vars: %v", vars)
 	}
+	// PUT accepts the wrapped shape GET returns, and rejects non-string values.
+	var vr VarsResult
+	if e := env.c.call(ctx, http.MethodPut, devPath("mock-1", "/vars"), map[string]any{"vars": map[string]string{"C": "3"}}, &vr); e != nil || vr.Vars["C"] != "3" || vr.Vars["A"] != "1" {
+		t.Fatalf("wrapped vars: %v %v", e, vr.Vars)
+	}
+	if e := env.c.call(ctx, http.MethodPut, devPath("mock-1", "/vars"), map[string]any{"D": 4}, &vr); e == nil || e.Code != CodeUsage {
+		t.Fatalf("expected USAGE for non-string var, got %v", e)
+	}
 	if _, err := env.c.Eval(ctx, "mock-1", "throw new Error('boom')"); codeOf(t, err) != CodeCommandFailed {
 		t.Fatalf("expected COMMAND_FAILED, got %v", err)
 	}

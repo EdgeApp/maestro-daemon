@@ -796,17 +796,27 @@ func (s *Server) handleSetVars(w http.ResponseWriter, r *http.Request) {
 	if a == nil {
 		return
 	}
-	var vars map[string]string
-	if e := decodeBody(r, &vars); e != nil {
-		// Accept {"vars": {...}} as well.
-		var wrapped struct {
-			Vars map[string]string `json:"vars"`
-		}
-		if e2 := decodeBody(r, &wrapped); e2 != nil || wrapped.Vars == nil {
-			writeError(w, e)
+	// Accept {"vars": {...}} (the shape GET returns) as well as a bare map.
+	var body map[string]json.RawMessage
+	if e := decodeBody(r, &body); e != nil {
+		writeError(w, e)
+		return
+	}
+	vars := map[string]string{}
+	if raw, ok := body["vars"]; ok && len(body) == 1 && len(raw) > 0 && raw[0] == '{' {
+		if err := json.Unmarshal(raw, &vars); err != nil {
+			writeError(w, Errorf(CodeUsage, "invalid vars: %v", err))
 			return
 		}
-		vars = wrapped.Vars
+	} else {
+		for k, raw := range body {
+			var v string
+			if err := json.Unmarshal(raw, &v); err != nil {
+				writeError(w, Errorf(CodeUsage, "variable %q must be a string", k))
+				return
+			}
+			vars[k] = v
+		}
 	}
 	for k, v := range vars {
 		a.session.SetVar(k, v)
