@@ -36,6 +36,10 @@ type Deps struct {
 	NewDriver func(ctx context.Context, deviceID string, cfg AttachConfig) (core.Driver, DriverInfo, func(), error)
 	// ListDevices discovers live devices; platform "" means all.
 	ListDevices func(platform string) []DeviceInfo
+	// NormalizeHierarchy turns a driver's raw hierarchy (XML or JSON) into
+	// the cross-driver tree. Optional: without it the raw document is
+	// returned parsed (JSON) or as a string (XML).
+	NormalizeHierarchy func(raw []byte) (any, error)
 	// Version is the binary version for daemon.json and reports.
 	Version string
 }

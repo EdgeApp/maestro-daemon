@@ -49,6 +49,8 @@ type daemonOpts struct {
 	force   bool   // device stop --force, run --continue-on-error, get hierarchy --raw
 	orphans bool   // device stop --orphans
 	outPath string // get screenshot -o
+	compact bool   // get hierarchy --compact
+	find    string // get hierarchy --find
 }
 
 func (o *daemonOpts) markAttach(name string) { o.AttachSet = append(o.AttachSet, name) }

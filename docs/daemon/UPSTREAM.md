@@ -31,6 +31,7 @@ Everything else is new:
 | Path | Purpose |
 | --- | --- |
 | `pkg/flow/steptype_export.go` | Exported wrappers around the unexported step parser: `StepTypes`, `ParseStep`, `BuildStep` |
+| `pkg/cli/hierarchy_export.go` | `NormalizeHierarchy`, the `hierarchy` command's cross-driver tree, for `GET …/hierarchy` |
 | `pkg/executor/session.go` | `executor.Session` — a long-lived `FlowRunner` that executes one step at a time and keeps variables, report and artifacts between calls |
 | `pkg/daemon/` | Daemon server (REST over a unix socket / optional TCP), protocol types, client, spawn logic, device registry, generated `commands_gen.go` |
 | `pkg/daemon/gen/` | Generator: reflects over the step structs → `commands_gen.go`, `npm/maestro-d/src/generated/commands.ts`, `docs/daemon/commands.md` |
@@ -50,6 +51,7 @@ If an upstream change breaks the build, it is almost certainly one of these.
 | `flow.parseStep`, `flow.parseSteps`, `flow.isStepType` (unexported) | `pkg/flow/steptype_export.go` | One YAML node → `flow.Step`; the registry of step type names (the export file keeps its own ordered list, `stepTypeOrder`, filtered through `isStepType`) |
 | `executor.FlowRunner` internals: `executeNestedStep`, `executeRepeat`/`executeRetry`/`executeRunFlow`/`executeSubFlow`, `executeTakeScreenshot`, `captureArtifacts`; `ScriptEngine` | `pkg/executor/session.go` | Executing a single parsed step with the runner's normal retry/optional/gate handling; variable store; `ImportSystemEnv` |
 | `cli.RunConfig`, `cli.CreateDriver` | `pkg/cli/daemon_wiring.go` (`attachToRunConfig`) | Opening a driver exactly as `maestro-runner test` does |
+| `cli.parseHierarchy`, `cli.formatHierarchy` (unexported) | `pkg/cli/hierarchy_export.go`, `get hierarchy` | The normalized tree and the `--compact`/`--find` renderers of the `hierarchy` command |
 | `cli.collectDevices`, `cli.buildDeviceReport`, `cli.buildAppReport`, `cli.resolveDriverName`, `cli.parseArtifactMode`, `cli.loadCapabilities` | `pkg/cli/daemon_wiring.go` | Device listing and report metadata |
 | `cli.GlobalFlags` | `pkg/cli/daemon.go` (`inheritedArgs`) | Honouring `--device`/`--platform` given before the command name |
 | `logger.Init/Close` | `pkg/cli/daemon.go` (`serve`) | The daemon's log file |

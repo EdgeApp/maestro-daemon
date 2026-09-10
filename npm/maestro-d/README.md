@@ -162,8 +162,9 @@ is the untyped form for commands the library does not know yet.
 
 #### Inspection (not recorded as steps)
 
-`screenshot()` → PNG `Buffer`; `hierarchy()` (parsed) / `hierarchyRaw()`
-(`Buffer`); `state()`; `platformInfo()`; `vars()` / `setVars({NAME: value})`;
+`screenshot()` → PNG `Buffer`; `hierarchy()` → the normalized tree
+(`HierarchyNode`: `type`, `id`, `text`, `bounds`, `children`, the same on
+every platform) / `hierarchyRaw()` → the driver's own XML/JSON (`Buffer`); `state()`; `platformInfo()`; `vars()` / `setVars({NAME: value})`;
 `eval(script)` runs JavaScript in the session's engine; `refresh()` re-reads
 the device record; `events({after?, signal})` streams this device's events.
 
@@ -196,7 +197,7 @@ interface StepResult {
   error?: ErrorBody   // a failed *optional* step resolves with ok:true and this set
   element?: ElementInfo
   data?: unknown      // copyTextFrom text, extractTextWithAI, …
-  artifacts: { screenshotBefore?, screenshotAfter?, hierarchy?, … }
+  artifacts: { screenshotBefore?, screenshotAfter?, viewHierarchy? }
   subSteps?: SubStep[]
   reportDir: string   // where artifacts for this session live
 }
