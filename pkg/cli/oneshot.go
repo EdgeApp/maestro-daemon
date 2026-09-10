@@ -231,6 +231,9 @@ func buildStepValue(spec daemon.CommandSpec, p *parsedArgs) (any, error) {
 		types[f.Key] = f.Type
 	}
 	for _, f := range fields {
+		if top, _, _ := strings.Cut(f.key, "."); len(types) > 0 && types[top] == "" {
+			return nil, usage("%s has no field %q (see `maestro-d %s --help`)", spec.Name, top, spec.Name)
+		}
 		var v any = true
 		if !f.bare {
 			var err error
