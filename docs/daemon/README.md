@@ -28,13 +28,13 @@ maestro-runner.
 ```
 maestro-daemon tapOn Login ──┐
 node script (maestro-daemon) ─┼── unix socket ──▶ maestro-daemon serve ──▶ driver ──▶ device
-curl http://127.0.0.1:7788 ──┘   (or TCP)         (one process per --name)
+curl http://127.0.0.1:7788 ──┘   (or TCP)         (one process per --daemon)
 ```
 
 1. **First call spawns the daemon.** `maestro-daemon tapOn …`, `MaestroDaemon.connect()`
-   and `maestro-daemon start` all look for a daemon called `<name>` (`--name`,
+   and `maestro-daemon start` all look for a daemon called `<name>` (`--daemon`,
    `$MAESTRO_DAEMON`, default `default`). If none is running they start
-   `maestro-daemon serve --name <name>` detached, wait for it to write
+   `maestro-daemon serve --daemon <name>` detached, wait for it to write
    `daemon.json` and answer on its socket, then proceed. This is the
    Edge CLI engine pattern: the caller never manages the process.
 2. **The daemon attaches devices.** Attaching opens a driver on a device
@@ -58,7 +58,7 @@ curl http://127.0.0.1:7788 ──┘   (or TCP)         (one process per --name)
 
 - **One daemon per name, many devices per daemon.** Names are how
   independent processes stay out of each other's way: an agent working on a
-  task uses `--name <task>` (or exports `MAESTRO_DAEMON=<task>`) and gets a
+  task uses `--daemon <task>` (or exports `MAESTRO_DAEMON=<task>`) and gets a
   daemon nobody else touches.
 - **A device belongs to one daemon at a time.** Attaching a device another
   daemon holds fails with `DEVICE_IN_USE`. `maestro-daemon ps` shows every

@@ -56,7 +56,7 @@ Device prerequisites are maestro-runner's: `adb` for Android, Xcode for iOS
 
 ## Concepts
 
-**Daemon.** One background process per *name* (`--name`, `$MAESTRO_DAEMON`,
+**Daemon.** One background process per *name* (`--daemon`, `$MAESTRO_DAEMON`,
 default `default`). A daemon owns one or more attached devices and exits
 after 30 minutes idle (configurable) or on `shutdown()`. Different processes
 should use different daemon names rather than sharing one; a device can only

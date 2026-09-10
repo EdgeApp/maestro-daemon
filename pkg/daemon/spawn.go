@@ -57,7 +57,7 @@ func EnsureDaemon(ctx context.Context, name string, opts SpawnOptions) (c *Clien
 			RemoveRunFiles(name)
 		} else {
 			return nil, false, Errorf(CodeDaemonUnavailable,
-				"daemon %q (pid %d) exists but does not answer on %s; stop it with `maestro-daemon stop --name %s`",
+				"daemon %q (pid %d) exists but does not answer on %s; stop it with `maestro-daemon stop --daemon %s`",
 				name, c.Info.PID, c.Info.SocketPath, name)
 		}
 	}
@@ -86,7 +86,7 @@ func spawn(ctx context.Context, name string, opts SpawnOptions) (*Client, error)
 	}
 	defer logFile.Close()
 
-	args := []string{"serve", "--name", name}
+	args := []string{"serve", "--daemon", name}
 	switch {
 	case opts.IdleTimeout < 0:
 		args = append(args, "--idle-timeout", "0")

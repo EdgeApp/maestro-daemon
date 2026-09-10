@@ -91,7 +91,7 @@ Flags accepted by every command, anywhere on the line:
 
 | flag | |
 | --- | --- |
-| `-n, --name NAME` | daemon name (default `$MAESTRO_DAEMON`, else `default`) |
+| `-n, --daemon NAME` | daemon name (default `$MAESTRO_DAEMON`, else `default`) |
 | `--device, --udid ID` | device (default `$MAESTRO_DEVICE`, else the only attached device; otherwise exit 2 listing what is attached) |
 | `--json` | full JSON result on stdout |
 | `--verbose` | progress lines on stderr ("Starting daemon…", "Attaching…") |
@@ -99,6 +99,13 @@ Flags accepted by every command, anywhere on the line:
 | `--no-wait` | fail (`BUSY`) instead of queueing behind a step already running on the device |
 | `--idle-timeout N`, `--http ADDR`, `--token T`, `--start-timeout N` | used only when this call spawns the daemon |
 | attach flags (`--platform`, `--driver`, `--app-file`, `--app-id`, `--team-id`, `-e KEY=VALUE`, …) | used only when this call attaches the device; see `attach` below |
+
+When a command has a field with the same name as one of these flags the
+field wins — `openBrowser --url`, `openLink --browser`, `runFlow --env` — so
+give the attach setting to `attach` instead. `--daemon`, `--device`, `--json`
+and the other daemon flags never collide with a field (which is why the
+daemon is `--daemon`, not `--name`: `tapOn --name` is the form-field
+selector).
 
 So the very first command on a fresh machine can be the whole setup:
 
@@ -123,7 +130,7 @@ differs from the one in effect; `detach` and `attach` again to change them).
 | `stop [--all] [--timeout N]` | detach every device, shut down the simulators/emulators the daemon booted, exit |
 
 ```sh
-maestro-daemon start --name ci --http 127.0.0.1:7788 --token "$TOKEN"
+maestro-daemon start --daemon ci --http 127.0.0.1:7788 --token "$TOKEN"
 maestro-daemon ps
 maestro-daemon stop --all
 ```
@@ -181,7 +188,7 @@ maestro-daemon eval 'maestro.copiedText'
 
 | variable | |
 | --- | --- |
-| `MAESTRO_DAEMON` | default `--name` |
+| `MAESTRO_DAEMON` | default `--daemon` |
 | `MAESTRO_DEVICE` | default `--device` |
 | `MAESTRO_DAEMON_HOME` | run-file root (default `~/.maestro-daemon`) |
 | `MAESTRO_DAEMON_BIN` | binary to spawn as the daemon (default: this executable) |

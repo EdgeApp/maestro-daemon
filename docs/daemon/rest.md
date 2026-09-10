@@ -11,7 +11,7 @@ of it; anything that can speak HTTP can drive a device the same way.
 | TCP | daemon started with `--http ADDR` | `http://ADDR`, with `Authorization: Bearer <token>` when `--token` was given |
 
 ```sh
-maestro-daemon start --name api --http 127.0.0.1:7788 --token s3cret
+maestro-daemon start --daemon api --http 127.0.0.1:7788 --token s3cret
 curl -s --unix-socket ~/.maestro-daemon/run/api/daemon.sock http://d/v1/status
 curl -s -H 'Authorization: Bearer s3cret' http://127.0.0.1:7788/v1/status
 ```
@@ -394,7 +394,7 @@ variables and `http` as `evalScript`) and answers `{"ok": true, "value":
 ```sh
 D=http://127.0.0.1:7788; H='Authorization: Bearer s3cret'
 ID=29271FDH200ABP
-maestro-daemon start --name api --http ${D#http://} --token s3cret
+maestro-daemon start --daemon api --http ${D#http://} --token s3cret
 
 curl -sf -H "$H" $D/v1/devices/$ID/attach -d '{"appId":"co.edgesecure.app"}' >/dev/null
 curl -sf -H "$H" $D/v1/devices/$ID/commands/launchApp -d '{"clearState":true}' >/dev/null

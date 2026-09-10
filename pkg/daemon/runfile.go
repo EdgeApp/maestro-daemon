@@ -39,7 +39,7 @@ const (
 
 var nameRe = regexp.MustCompile(`^[A-Za-z0-9][A-Za-z0-9._-]{0,63}$`)
 
-// ResolveName applies the `--name` → MAESTRO_DAEMON → "default" rule.
+// ResolveName applies the `--daemon` → MAESTRO_DAEMON → "default" rule.
 func ResolveName(flag string) string {
 	if flag != "" {
 		return flag
