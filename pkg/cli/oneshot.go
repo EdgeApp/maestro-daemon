@@ -82,9 +82,15 @@ func commandHelp(spec daemon.CommandSpec) string {
 	if spec.Compound {
 		fmt.Fprintf(&b, "Nested steps are passed with --yaml FILE (or - for stdin) holding the command's YAML value.\n")
 	}
-	if len(spec.Fields) > 0 {
+	var fields []daemon.FieldSpec
+	for _, f := range spec.Fields {
+		if _, isBase := baseStepFlags[f.Key]; !isBase && f.Key != "platform" {
+			fields = append(fields, f)
+		}
+	}
+	if len(fields) > 0 {
 		fmt.Fprintf(&b, "\nFields (--<field> value; nested fields as --a.b value; JSON/YAML for lists and maps):\n")
-		for _, f := range spec.Fields {
+		for _, f := range fields {
 			doc := f.Doc
 			if doc == "" {
 				doc = f.Type
@@ -93,6 +99,9 @@ func commandHelp(spec daemon.CommandSpec) string {
 			}
 			fmt.Fprintf(&b, "   --%-28s %s\n", f.Key, doc)
 		}
+	}
+	if !spec.ValueLess {
+		fmt.Fprintf(&b, "\nEvery command also takes --optional, --label TEXT, --timeout MS and\n--platform android|ios|web (skip the step on other platforms; on the first\ncommand for a device this also selects the platform to attach with).\n")
 	}
 	return b.String()
 }
