@@ -23,7 +23,7 @@ never copies their code.
 | --- | --- | --- |
 | `pkg/cli/cli.go` | `app.Commands = append(app.Commands, daemonCommands()...)`; app name, usage text and version printer say `maestro-d` | ~15 |
 | `pkg/driver/mock/mock.go` | `takeScreenshot` returns the PNG bytes in `result.Data`, as real drivers do (lets the mock e2e test save a screenshot) | 6 |
-| `Makefile` | `BINARY_NAME=maestro-d`; `gen` / `gen-check` targets | ~10 |
+| `Makefile` | `BINARY_NAME=maestro-d`; `gen` / `gen-check` targets; `build` replaces the installed binary's inode (a running daemon plus an in-place `cp` gets the next exec SIGKILLed on macOS) | ~14 |
 | `README.md` | Fork banner at the top | ~17 |
 
 Everything else is new:

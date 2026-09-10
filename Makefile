@@ -36,7 +36,10 @@ gen-check:
 build:
 	$(GOBUILD) $(LDFLAGS) -o $(BINARY_NAME) .
 	@mkdir -p $(INSTALL_DIR)/bin
-	@cp $(BINARY_NAME) $(INSTALL_DIR)/bin/
+	@# A daemon is usually running from the installed path; overwriting that
+	@# file in place makes macOS SIGKILL the next exec (stale code-signature
+	@# cache), so replace the inode instead.
+	@rm -f $(INSTALL_DIR)/bin/$(BINARY_NAME) && cp $(BINARY_NAME) $(INSTALL_DIR)/bin/
 	@if [ -d drivers ]; then cp -r drivers $(INSTALL_DIR)/; fi
 	@echo "Installed to $(INSTALL_DIR)/bin/$(BINARY_NAME)"
 
