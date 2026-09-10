@@ -11,7 +11,7 @@ import * as path from 'node:path'
 import { after, before, describe, test } from 'node:test'
 import { fileURLToPath } from 'node:url'
 
-import { COMMANDS, MaestroDaemon, MaestroError, buildValue, isMaestroError, liveInfo } from '../dist/esm/index.js'
+import { COMMANDS, MaestroDaemon, MaestroError, PACKAGE_BY_TARGET, buildValue, isMaestroError, liveInfo } from '../dist/esm/index.js'
 
 const here = path.dirname(fileURLToPath(import.meta.url))
 const repoRoot = path.resolve(here, '..', '..', '..')
@@ -435,5 +435,40 @@ describe('detach and shutdown', () => {
       (err) => assert.ok(isMaestroError(err, 'DAEMON_UNAVAILABLE')),
     )
     daemon = undefined
+  })
+})
+
+describe('binary resolution', () => {
+  // `npm i -g` (and `npx`) put the bin on PATH as a symlink that lives
+  // outside the package — <prefix>/bin/maestro-daemon → <prefix>/lib/
+  // node_modules/maestro-daemon/bin/maestro-daemon.js — so the platform
+  // package can only be found by resolving from the link's target.
+  test('the wrapper finds the bundled binary through a global-install symlink', () => {
+    const pkgRoot = path.resolve(here, '..')
+    const prefix = fs.mkdtempSync(path.join(os.tmpdir(), 'maestro-daemon-global-'))
+    const installed = path.join(prefix, 'lib', 'node_modules', 'maestro-daemon')
+    fs.mkdirSync(installed, { recursive: true })
+    fs.cpSync(path.join(pkgRoot, 'dist'), path.join(installed, 'dist'), { recursive: true })
+    fs.cpSync(path.join(pkgRoot, 'bin'), path.join(installed, 'bin'), { recursive: true })
+
+    // A stub standing in for the platform package's Go binary.
+    const platform = path.join(installed, 'node_modules', PACKAGE_BY_TARGET[`${process.platform}-${process.arch}`], 'bin')
+    fs.mkdirSync(platform, { recursive: true })
+    fs.writeFileSync(path.join(platform, '..', 'package.json'), JSON.stringify({ name: PACKAGE_BY_TARGET[`${process.platform}-${process.arch}`], version: '0.0.0' }))
+    const stub = path.join(platform, 'maestro-daemon')
+    fs.writeFileSync(stub, '#!/bin/sh\necho BUNDLED-STUB "$@"\n')
+    fs.chmodSync(stub, 0o755)
+
+    fs.mkdirSync(path.join(prefix, 'bin'))
+    const link = path.join(prefix, 'bin', 'maestro-daemon')
+    fs.symlinkSync(path.join(installed, 'bin', 'maestro-daemon.js'), link)
+
+    // No MAESTRO_DAEMON_BIN, and nothing named maestro-daemon on PATH, so
+    // only the bundled package can answer. cwd is elsewhere on purpose.
+    const env = { ...process.env, PATH: [path.dirname(process.execPath), '/usr/bin', '/bin'].join(path.delimiter) }
+    delete env.MAESTRO_DAEMON_BIN
+    const out = execFileSync(link, ['--version'], { cwd: os.tmpdir(), env, encoding: 'utf8' })
+    assert.match(out, /^BUNDLED-STUB --version/)
+    fs.rmSync(prefix, { recursive: true, force: true })
   })
 })
