@@ -25,6 +25,7 @@ never copies their code.
 | `pkg/driver/mock/mock.go` | `takeScreenshot` returns the PNG bytes in `result.Data`, as real drivers do (lets the mock e2e test save a screenshot) | 6 |
 | `Makefile` | `BINARY_NAME=maestro-daemon`; `gen` / `gen-check` targets; `build` replaces the installed binary's inode (a running daemon plus an in-place `cp` gets the next exec SIGKILLed on macOS) | ~14 |
 | `README.md` | Fork banner at the top | ~17 |
+| `.gitignore` | Ignore the `maestro-daemon` binary and `npm/dist-daemon/` | 6 |
 
 Everything else is new:
 
