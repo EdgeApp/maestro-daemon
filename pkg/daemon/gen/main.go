@@ -46,6 +46,24 @@ var commandOverrides = map[string]func(*Command){
 		c.Doc = "Defines session variables; the value is a map of NAME: value."
 		c.Fields = nil
 	},
+	// Nested steps are tagged `yaml:"-"` and read by hand in the parser.
+	"repeat": func(c *Command) {
+		c.Fields = append(c.Fields, nestedField("commands", "Steps to repeat"))
+	},
+	"retry": func(c *Command) {
+		c.Fields = append(c.Fields, nestedField("commands", "Steps to retry (alternative to file)"))
+	},
+	"runFlow": func(c *Command) {
+		c.Fields = append(c.Fields,
+			nestedField("commands", "Inline steps (alternative to file)"),
+			Field{Key: "else", GoType: "string|[]Step", TSType: "string | Step[]", Doc: "Fallback flow file or inline steps when `when` is false"},
+			nestedField("elseCommands", "Inline fallback steps when `when` is false"),
+		)
+	},
+}
+
+func nestedField(key, doc string) Field {
+	return Field{Key: key, GoType: "[]Step", TSType: "Step[]", Doc: doc}
 }
 
 // compoundHelpers maps parse helpers used by compound steps to their struct.
@@ -575,6 +593,11 @@ func renderTS(cmds []Command) []byte {
 		tn := paramsTypeName(c.Name)
 		if c.Doc != "" {
 			fmt.Fprintf(&b, "/** %s */\n", c.Doc)
+		}
+		if len(c.Fields) == 0 && !c.ValueLess {
+			// A free-form map (defineVariables): NAME → value.
+			fmt.Fprintf(&b, "export type %s = Record<string, string>\n\n", tn)
+			continue
 		}
 		fmt.Fprintf(&b, "export interface %s {\n", tn)
 		for _, f := range c.Fields {

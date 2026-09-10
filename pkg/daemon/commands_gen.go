@@ -628,6 +628,7 @@ var CommandSpecs = map[string]CommandSpec{
 		{Key: "platform", Type: "string", Doc: "Platform restricts this step to a single platform; when set and it doesn't match the running driver, the step is skipped (Maestro #1353)."},
 		{Key: "times", Type: "string", Doc: "String for variable support"},
 		{Key: "while", Type: "Condition", Doc: ""},
+		{Key: "commands", Type: "[]Step", Doc: "Steps to repeat"},
 	}},
 	"resetPermissions": {Name: "resetPermissions", Scalar: "", ValueLess: true, Compound: false, Doc: "Resets all browser permissions.", Fields: []FieldSpec{
 		{Key: "optional", Type: "bool", Doc: ""},
@@ -643,6 +644,7 @@ var CommandSpecs = map[string]CommandSpec{
 		{Key: "maxRetries", Type: "string", Doc: "String for variable support"},
 		{Key: "file", Type: "string", Doc: ""},
 		{Key: "env", Type: "map[string]string", Doc: ""},
+		{Key: "commands", Type: "[]Step", Doc: "Steps to retry (alternative to file)"},
 	}},
 	"runBrowserScript": {Name: "runBrowserScript", Scalar: "file", ValueLess: false, Compound: false, Doc: "Loads and executes a JS file in the browser page context.", Fields: []FieldSpec{
 		{Key: "optional", Type: "bool", Doc: ""},
@@ -661,6 +663,9 @@ var CommandSpecs = map[string]CommandSpec{
 		{Key: "file", Type: "string", Doc: ""},
 		{Key: "when", Type: "*Condition", Doc: ""},
 		{Key: "env", Type: "map[string]string", Doc: ""},
+		{Key: "commands", Type: "[]Step", Doc: "Inline steps (alternative to file)"},
+		{Key: "else", Type: "string|[]Step", Doc: "Fallback flow file or inline steps when `when` is false"},
+		{Key: "elseCommands", Type: "[]Step", Doc: "Inline fallback steps when `when` is false"},
 	}},
 	"runScript": {Name: "runScript", Scalar: "script", ValueLess: false, Compound: false, Doc: "Runs a script.", Fields: []FieldSpec{
 		{Key: "optional", Type: "bool", Doc: ""},
