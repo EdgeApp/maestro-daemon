@@ -1,0 +1,87 @@
+# maestro-daemon's own checks and releases. Kept apart from ci.yml (upstream
+# maestro-runner's workflow) so rebases never conflict there.
+name: Daemon
+
+on:
+  push:
+    branches: [main]
+    tags: ['daemon-v*']
+  pull_request:
+  workflow_dispatch:
+
+jobs:
+  check:
+    name: Check
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+
+      - uses: actions/setup-go@v6
+        with:
+          go-version: '1.25.6'  # as ci.yml
+          cache: true
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: npm
+          cache-dependency-path: npm/maestro-daemon/package-lock.json
+
+      # The Go/TypeScript/Markdown command tables must match the flow parser.
+      - name: Generated command tables are current
+        run: make gen-check
+
+      - name: Go tests (daemon and CLI)
+        run: go test -race -timeout 20m ./pkg/daemon/... ./pkg/cli/...
+
+      - name: JavaScript library tests
+        run: npm ci --no-audit --no-fund && npm test
+        working-directory: npm/maestro-daemon
+
+  release:
+    name: Release
+    runs-on: ubuntu-latest
+    needs: [check]
+    if: startsWith(github.ref, 'refs/tags/daemon-v')
+    permissions:
+      contents: write
+      id-token: write
+    steps:
+      - uses: actions/checkout@v5
+
+      - uses: actions/setup-go@v6
+        with:
+          go-version: '1.25.6'  # as ci.yml
+          cache: true
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          registry-url: https://registry.npmjs.org
+
+      - name: Version from tag
+        id: v
+        run: echo "version=${GITHUB_REF_NAME#daemon-v}" >> "$GITHUB_OUTPUT"
+
+      - name: Build npm packages
+        run: VERSION=${{ steps.v.outputs.version }} ./npm/build-daemon-npm.sh
+
+      - name: GitHub release
+        uses: softprops/action-gh-release@v2
+        with:
+          files: npm/dist-daemon/${{ steps.v.outputs.version }}/*.tgz
+          generate_release_notes: true
+
+      # Platform packages first, so the main package never resolves to a
+      # version that does not exist. Skipped when no npm token is configured.
+      - name: Publish to npm
+        if: env.NODE_AUTH_TOKEN != ''
+        env:
+          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
+        run: |
+          set -e
+          v=${{ steps.v.outputs.version }}
+          for t in darwin-arm64 darwin-x64 linux-arm64 linux-x64; do
+            npm publish "npm/dist-daemon/$v/maestro-daemon-$t-$v.tgz" --access public
+          done
+          npm publish "npm/dist-daemon/$v/maestro-daemon-$v.tgz" --access public

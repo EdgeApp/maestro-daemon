@@ -43,9 +43,13 @@ npm install maestro-daemon
 The Go binary comes from a per-platform optional dependency
 (`maestro-daemon-darwin-arm64`, `-darwin-x64`, `-linux-arm64`, `-linux-x64`).
 If you install with `--no-optional`, or run on another platform, put
-`maestro-daemon` on `PATH` or point `MAESTRO_DAEMON_BIN` at it. The binary
-shares `~/.maestro-runner/` (drivers, caches) with a plain maestro-runner
-install.
+`maestro-daemon` on `PATH` or point `MAESTRO_DAEMON_BIN` at it.
+
+The platform package carries the device drivers and is the binary's home
+(caches land inside it, as with maestro-runner's own npm package). To share
+an existing `~/.maestro-runner/` instead, set
+`MAESTRO_RUNNER_HOME=$HOME/.maestro-runner` — or point `MAESTRO_DAEMON_BIN`
+at `~/.maestro-runner/bin/maestro-daemon` after `make build`.
 
 Device prerequisites are maestro-runner's: `adb` for Android, Xcode for iOS
 (`teamId` for a physical iPhone), a browser for web.

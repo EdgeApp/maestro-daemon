@@ -68,3 +68,9 @@ SNAPSHOT_MODE_SPEC.md
 # Each carries a ~50MB binary plus drivers; they are build output, not source.
 npm/platforms/
 npm/**/node_modules/
+
+# maestro-daemon build outputs (the binary at the repo root and the npm
+# packages assembled by npm/build-daemon-npm.sh).
+/maestro-daemon
+maestro-daemon-*
+npm/dist-daemon/
