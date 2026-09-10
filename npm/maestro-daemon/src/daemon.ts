@@ -1,0 +1,207 @@
+// MaestroDaemon: a handle on one daemon process. `connect()` finds the named
+// daemon (spawning it when needed, like the Edge CLI's engine), and the
+// handle boots devices and attaches to them.
+
+import { MaestroError } from './errors.js'
+import { MaestroDevice, anySignal } from './device.js'
+import { ENV_DEVICE, resolveName } from './runfiles.js'
+import { ensureDaemon, waitForExit, type SpawnOptions } from './spawn.js'
+import { Transport } from './transport.js'
+import type { AttachOptions, BootOptions, DaemonEvent, DaemonInfo, DeviceInfo, Envelope, StatusResult } from './types.js'
+
+export interface ConnectOptions extends SpawnOptions {
+  /** Daemon name (default `$MAESTRO_DAEMON`, else 'default'). One daemon per name. */
+  name?: string
+  /**
+   * Connect to a daemon's TCP listener (`http://host:7788`) instead of the
+   * local unix socket. Nothing is spawned in this mode.
+   */
+  url?: string
+  /** Aborts every request made through this handle. */
+  signal?: AbortSignal
+}
+
+export interface DeviceAttachOptions extends AttachOptions {
+  /** Device id / UDID (default `$MAESTRO_DEVICE`, else the only attached device). */
+  device?: string
+  /** Aborts every request made through the returned device handle. */
+  signal?: AbortSignal
+}
+
+export interface ShutdownOptions {
+  /** Milliseconds to wait for the process to exit (default 15000; 0 = don't wait). */
+  wait?: number
+  signal?: AbortSignal
+}
+
+export class MaestroDaemon {
+  /** Daemon name. */
+  readonly name: string
+  /** daemon.json as of connect (undefined for `url` connections until `status()`). */
+  info?: DaemonInfo
+  /** True when `connect()` spawned the process. */
+  readonly started: boolean
+  readonly signal?: AbortSignal
+  private readonly transport: Transport
+
+  private constructor(name: string, transport: Transport, started: boolean, info?: DaemonInfo, signal?: AbortSignal) {
+    this.name = name
+    this.transport = transport
+    this.started = started
+    if (info) this.info = info
+    if (signal) this.signal = signal
+  }
+
+  /**
+   * Connect to the named daemon, starting `maestro-daemon serve` in the
+   * background when it is not running (pass `spawn: false` to refuse).
+   */
+  static async connect(opts: ConnectOptions = {}): Promise<MaestroDaemon> {
+    const name = resolveName(opts.name)
+    if (opts.url) {
+      const t = new Transport({ url: opts.url, token: opts.token })
+      const d = new MaestroDaemon(name, t, false, undefined, opts.signal)
+      const st = await d.status()
+      d.info = st.daemon
+      return d
+    }
+    const { info, transport, started } = await ensureDaemon(name, { ...opts, signal: opts.signal })
+    return new MaestroDaemon(name, transport, started, info, opts.signal)
+  }
+
+  /** `connect()` and `attach()` in one call. */
+  static async attach(opts: ConnectOptions & DeviceAttachOptions): Promise<MaestroDevice> {
+    const d = await MaestroDaemon.connect(opts)
+    return d.attach(opts)
+  }
+
+  private sig(signal?: AbortSignal): AbortSignal | undefined {
+    return anySignal(signal, this.signal)
+  }
+
+  // -------------------------------------------------------------------------
+  // Daemon
+
+  /** Daemon info and every device it knows. */
+  async status(opts: { signal?: AbortSignal } = {}): Promise<StatusResult> {
+    return this.transport.json<StatusResult>('/v1/status', { signal: this.sig(opts.signal) })
+  }
+
+  /** Resolves when the daemon answers; rejects with DAEMON_UNAVAILABLE. */
+  async ping(timeoutMs = 3000): Promise<void> {
+    await this.transport.json<StatusResult>('/v1/status', { timeout: timeoutMs })
+  }
+
+  /**
+   * Stop the daemon: detaches every device, shuts down the simulators and
+   * emulators it booted, and exits.
+   */
+  async shutdown(opts: ShutdownOptions = {}): Promise<void> {
+    await this.transport.json<Envelope>('/v1/shutdown', { method: 'POST', signal: this.sig(opts.signal) })
+    this.transport.close()
+    const wait = opts.wait ?? 15_000
+    if (wait > 0 && this.info) {
+      if (!(await waitForExit(this.info, wait))) {
+        throw MaestroError.of('DAEMON_UNAVAILABLE', `daemon "${this.name}" (pid ${this.info.pid}) did not exit within ${wait}ms`)
+      }
+    }
+  }
+
+  /** Close idle connections; the daemon keeps running. */
+  close(): void {
+    this.transport.close()
+  }
+
+  /** Events from every device. Ends when `signal` fires. */
+  events(opts: { device?: string; after?: number; signal?: AbortSignal } = {}): AsyncIterable<DaemonEvent> {
+    const q = new URLSearchParams()
+    if (opts.device) q.set('device', opts.device)
+    if (opts.after) q.set('after', String(opts.after))
+    const qs = q.toString()
+    return this.transport.sse<DaemonEvent>('/v1/events' + (qs ? `?${qs}` : ''), this.sig(opts.signal))
+  }
+
+  // -------------------------------------------------------------------------
+  // Devices
+
+  /** Connected devices, booted simulators/emulators and attached sessions. */
+  async devices(opts: { platform?: string; signal?: AbortSignal } = {}): Promise<DeviceInfo[]> {
+    const path = '/v1/devices' + (opts.platform ? `?platform=${encodeURIComponent(opts.platform)}` : '')
+    const res = await this.transport.json<Envelope & { devices: DeviceInfo[] }>(path, { signal: this.sig(opts.signal) })
+    return res.devices
+  }
+
+  /** One device by id. */
+  async device(id: string, opts: { signal?: AbortSignal } = {}): Promise<DeviceInfo> {
+    const res = await this.transport.json<Envelope & { device: DeviceInfo }>(`/v1/devices/${encodeURIComponent(id)}`, {
+      signal: this.sig(opts.signal),
+    })
+    return res.device
+  }
+
+  /**
+   * Boot a simulator or emulator by name (or return it if already booted).
+   * Anything booted here is shut down when the daemon exits.
+   */
+  async startDevice(opts: BootOptions & { signal?: AbortSignal }): Promise<DeviceInfo> {
+    if (!opts.platform || !opts.name) throw new TypeError('startDevice() needs platform and name')
+    const { signal, ...body } = opts
+    const res = await this.transport.json<Envelope & { device: DeviceInfo }>('/v1/devices', {
+      method: 'POST',
+      body,
+      signal: this.sig(signal),
+    })
+    return res.device
+  }
+
+  /**
+   * Detach (if attached) and shut a device down. Devices this daemon did
+   * not boot are refused with DEVICE_EXTERNAL unless `force`.
+   */
+  async stopDevice(id: string, opts: { force?: boolean; signal?: AbortSignal } = {}): Promise<void> {
+    await this.transport.json<Envelope>(`/v1/devices/${encodeURIComponent(id)}`, {
+      method: 'DELETE',
+      body: { force: opts.force === true },
+      signal: this.sig(opts.signal),
+    })
+  }
+
+  /**
+   * Open a driver on a device and return its handle. Attaching to an
+   * already-attached device returns a handle without reconnecting.
+   */
+  async attach(opts: DeviceAttachOptions = {}): Promise<MaestroDevice> {
+    const { device, signal, ...cfg } = opts
+    const id = await this.resolveDevice(device, signal)
+    const res = await this.transport.json<Envelope & { device: DeviceInfo }>(`/v1/devices/${encodeURIComponent(id)}/attach`, {
+      method: 'POST',
+      body: cfg,
+      signal: this.sig(signal),
+    })
+    return new MaestroDevice(this.transport, this, res.device, anySignal(signal, this.signal))
+  }
+
+  /** Close the driver on a device by id. */
+  async detach(id: string, opts: { signal?: AbortSignal } = {}): Promise<void> {
+    await this.transport.json<Envelope>(`/v1/devices/${encodeURIComponent(id)}/detach`, {
+      method: 'POST',
+      signal: this.sig(opts.signal),
+    })
+  }
+
+  /** Explicit id → $MAESTRO_DEVICE → the only attached device → USAGE. */
+  private async resolveDevice(id: string | undefined, signal?: AbortSignal): Promise<string> {
+    const chosen = id || process.env[ENV_DEVICE]
+    if (chosen) return chosen
+    const attached = (await this.devices({ signal })).filter((d) => d.attached)
+    if (attached.length === 1 && attached[0]) return attached[0].id
+    const list = attached.map((d) => `${d.id} (${d.platform})`).join(', ')
+    throw MaestroError.of(
+      'USAGE',
+      attached.length === 0
+        ? `no device given: pass {device: '<id>'} or set ${ENV_DEVICE}`
+        : `several devices are attached; pass {device: '<id>'}: ${list}`,
+      { details: { attached: attached.map((d) => d.id) } },
+    )
+  }
+}
