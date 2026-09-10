@@ -79,8 +79,23 @@ func finishErr(err error, jsonMode bool) error {
 	} else if !jsonMode || de.Code != daemon.CodeCommandFailed {
 		fmt.Fprintf(os.Stderr, "Error: %s\n", de.Message)
 	}
-	printJSON(os.Stderr, daemon.FailureEnvelope(de))
+	env := daemon.FailureEnvelope(de)
+	// --json promises a JSON document on stdout; a failure that produced no
+	// step result (DEVICE_IN_USE, USAGE, …) would otherwise leave it empty.
+	if jsonMode && !jsonOnStdout {
+		printJSON(os.Stdout, env)
+	}
+	printJSON(os.Stderr, env)
 	return cli.Exit("", de.ExitCode())
+}
+
+// jsonOnStdout records that --json output already went to stdout, so a
+// failure envelope is not printed there a second time.
+var jsonOnStdout bool
+
+func printJSONStdout(v any) {
+	jsonOnStdout = true
+	printJSON(os.Stdout, v)
 }
 
 // connectDaemon dials the named daemon, spawning it unless --no-spawn.
@@ -296,7 +311,7 @@ func fmtMs(ms int64) string {
 func emitStep(o *daemonOpts, r *daemon.StepResult, err error) error {
 	if r != nil {
 		if o.JSON {
-			printJSON(os.Stdout, r)
+			printJSONStdout(r)
 		} else {
 			printStepResult(os.Stdout, r)
 		}
@@ -313,7 +328,7 @@ func emitStep(o *daemonOpts, r *daemon.StepResult, err error) error {
 func emitSteps(o *daemonOpts, r *daemon.StepsResult, err error) error {
 	if r != nil {
 		if o.JSON {
-			printJSON(os.Stdout, r)
+			printJSONStdout(r)
 		} else {
 			for i := range r.Results {
 				printStepResult(os.Stdout, &r.Results[i])

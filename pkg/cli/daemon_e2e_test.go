@@ -187,6 +187,10 @@ func TestE2E_OneShotLifecycle(t *testing.T) {
 	if envelopeCode(t, r.stderr) != daemon.CodeUsage || !strings.Contains(r.stderr, "needs a value") {
 		t.Fatalf("expected USAGE for bare tapOn: %s", r.stderr)
 	}
+	// --json always leaves a document on stdout, even when no step ran.
+	if envelopeCode(t, r.stdout) != daemon.CodeUsage {
+		t.Fatalf("expected the USAGE envelope on stdout too: %q", r.stdout)
+	}
 
 	// Vars / eval.
 	e.ok("set", "A=1", "B=two")

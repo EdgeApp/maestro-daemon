@@ -75,7 +75,9 @@ exit 1
 ```
 
 `--json` prints the full result envelope on stdout instead (success or
-failure), which is what scripts and agents should parse:
+failure — a failure that never reached a step, such as `DEVICE_IN_USE`,
+puts the error envelope there), which is what scripts and agents should
+parse:
 
 ```sh
 maestro-d copyTextFrom --id balance --json | jq -r .data
