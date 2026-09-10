@@ -23,6 +23,15 @@ export function target(): string {
   return `${process.platform}-${process.arch}`
 }
 
+/** realpath, or the path itself when it cannot be resolved. */
+function realPath(p: string): string {
+  try {
+    return fs.realpathSync(p)
+  } catch {
+    return p
+  }
+}
+
 function isExecutable(p: string): boolean {
   try {
     fs.accessSync(p, fs.constants.X_OK)
@@ -40,8 +49,17 @@ export function bundledBinary(): string | undefined {
   // A registry install puts it beside maestro-d in the consumer's
   // node_modules, which is reachable from the cwd and from the entry script;
   // both are searched so `npm link` and monorepos work too.
+  //
+  // The entry has to be the real path: `npm i -g` and `npx` run bin/ through
+  // a symlink outside the package (…/bin/maestro-d → …/lib/node_modules/
+  // maestro-d/bin/maestro-d.js), and resolving from the link's own
+  // directory never reaches the package's node_modules.
   const entry = process.argv[1]
-  const roots = entry ? [process.cwd(), path.dirname(path.resolve(entry))] : [process.cwd()]
+  const roots = [process.cwd()]
+  if (entry != null) {
+    const resolved = path.resolve(entry)
+    roots.push(path.dirname(realPath(resolved)))
+  }
   for (const from of roots) {
     try {
       const resolver = createRequire(path.join(from, 'noop.js'))
