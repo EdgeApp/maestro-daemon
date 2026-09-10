@@ -133,7 +133,7 @@ func Execute() {
 	allFlags := append(GlobalFlags, testCommand.Flags...)
 
 	cli.VersionPrinter = func(c *cli.Context) {
-		fmt.Printf("maestro-runner %s\n", c.App.Version)
+		fmt.Printf("maestro-daemon %s (maestro-runner %s)\n", c.App.Version, UpstreamVersion)
 		fmt.Printf("  Commit:  %s\n", Commit)
 		fmt.Printf("  Built:   %s\n", BuildDate)
 		fmt.Printf("  Go:      %s\n", runtime.Version())
@@ -141,12 +141,20 @@ func Execute() {
 	}
 
 	app := &cli.App{
-		Name:      "maestro-runner",
-		Usage:     "Maestro test runner for mobile and web apps",
+		Name:      "maestro-daemon",
+		Usage:     "Maestro test runner for mobile and web apps, plus a daemon for one-shot commands",
 		Version:   Version,
 		ArgsUsage: "<flow-file-or-folder>...",
-		Description: `Maestro Runner executes Maestro flow files for automated testing
-of iOS, Android, and web applications.
+		Description: `Maestro Daemon is maestro-runner plus a persistent daemon: every YAML
+command is also a CLI command, a REST route and a JavaScript method.
+
+  maestro-daemon launchApp co.example.app --device 29271FDH200ABP
+  maestro-daemon tapOn Login
+  maestro-daemon assertVisible "Welcome" --timeout 5000
+  maestro-daemon commands            # list every one-shot command
+  maestro-daemon tapOn --help        # fields of one command
+
+Everything below is unchanged from maestro-runner.
 
 Examples:
   # Run with default UIAutomator2 driver
@@ -175,6 +183,7 @@ Examples:
 			screenshotCommand,
 		},
 	}
+	app.Commands = append(app.Commands, daemonCommands()...) // maestro-daemon
 
 	if err := app.Run(os.Args); err != nil {
 		fmt.Fprintf(os.Stderr, "Error: %v\n", err)
