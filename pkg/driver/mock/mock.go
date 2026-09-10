@@ -79,6 +79,12 @@ func (d *Driver) Execute(step flow.Step) *core.CommandResult {
 		}
 	}
 
+	// takeScreenshot returns the PNG so the runner can save it, as real
+	// drivers do.
+	if _, ok := step.(*flow.TakeScreenshotStep); ok {
+		result.Data, _ = d.Screenshot()
+	}
+
 	return result
 }
 
