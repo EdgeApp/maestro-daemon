@@ -383,8 +383,7 @@ export interface CopyTextFromParams {
 }
 
 /** Defines session variables; the value is a map of NAME: value. */
-export interface DefineVariablesParams {
-}
+export type DefineVariablesParams = Record<string, string>
 
 /** Dismisses a system alert dialog (taps Don't Allow/Cancel). */
 export interface DismissAlertParams {
@@ -937,6 +936,8 @@ export interface RepeatParams {
   /** String for variable support */
   times?: string
   while?: Condition
+  /** Steps to repeat */
+  commands?: Step[]
 }
 
 /** Resets all browser permissions. */
@@ -959,6 +960,8 @@ export interface RetryParams {
   maxRetries?: string
   file?: string
   env?: Record<string, string>
+  /** Steps to retry (alternative to file) */
+  commands?: Step[]
 }
 
 /** Loads and executes a JS file in the browser page context. */
@@ -986,6 +989,12 @@ export interface RunFlowParams {
   file?: string
   when?: Condition
   env?: Record<string, string>
+  /** Inline steps (alternative to file) */
+  commands?: Step[]
+  /** Fallback flow file or inline steps when `when` is false */
+  else?: string | Step[]
+  /** Inline fallback steps when `when` is false */
+  elseCommands?: Step[]
 }
 
 /** Runs a script. */
