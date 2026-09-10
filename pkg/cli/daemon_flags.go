@@ -21,7 +21,7 @@ import (
 
 // daemonOpts is everything a daemon command reads from its flags.
 type daemonOpts struct {
-	Name   string // daemon name (--name → MAESTRO_D → default)
+	Name   string // daemon name (--daemon → MAESTRO_D → default)
 	Device string // device id (--device → MAESTRO_DEVICE → only attached)
 
 	JSON    bool
@@ -163,7 +163,10 @@ func extra(a *daemon.AttachConfig, k string, v any) {
 var (
 	// daemonSelectFlags pick the daemon and output mode.
 	daemonSelectFlags = []dflag{
-		strFlag("name", "Daemon name (one daemon per name; each hosts many devices)", []string{daemon.EnvName},
+		// The flag is --daemon, not --name: tapOn, assertVisible, inputText and
+		// friends have a `name` selector field, and a field wins over a table
+		// flag, so `tapOn X --name ci` would silently become a selector.
+		strFlag("daemon", "Daemon name (one daemon per name; each hosts many devices)", []string{daemon.EnvName},
 			func(o *daemonOpts, v string) { o.Name = v }, "n"),
 		boolFlag("json", "Print the full JSON result on stdout", nil, func(o *daemonOpts, v bool) { o.JSON = v }),
 		boolFlag("verbose", "Print progress to stderr", []string{"MAESTRO_VERBOSE"}, func(o *daemonOpts, v bool) { o.Verbose = v }),

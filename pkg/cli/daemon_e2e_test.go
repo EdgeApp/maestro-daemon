@@ -174,6 +174,16 @@ func TestE2E_OneShotLifecycle(t *testing.T) {
 	if !strings.Contains(r.stdout, "skip") && !strings.Contains(r.stdout, "gate") {
 		t.Fatalf("expected skip: %s", r.stdout)
 	}
+	// --daemon is honoured wherever it sits on the line, and --name is the
+	// selector field, not the daemon.
+	r = e.fails(3, "tapOn", "Login", "--daemon", "other", "--no-spawn")
+	if envelopeCode(t, r.stderr) != daemon.CodeDaemonUnavailable {
+		t.Fatalf("--daemon after the value should select daemon \"other\":\n%s", r.stderr)
+	}
+	r = e.ok("tapOn", "--name", "email")
+	if !strings.Contains(r.stdout, `name="email"`) {
+		t.Fatalf("--name should be the selector field:\n%s", r.stdout)
+	}
 	// A flag that is not a field of the command is a usage error.
 	r = e.fails(2, "tapOn", "--nonsense", "x", "--json")
 	if envelopeCode(t, r.stderr) != daemon.CodeUsage {

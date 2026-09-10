@@ -1,5 +1,5 @@
 // Starting a daemon that isn't running (mirrors pkg/daemon/spawn.go and the
-// Edge CLI's ensureEngine): spawn `maestro-d serve --name <name>`
+// Edge CLI's ensureEngine): spawn `maestro-d serve --daemon <name>`
 // detached with its output in startup.log, then poll daemon.json until the
 // new process answers.
 
@@ -79,7 +79,7 @@ export async function ensureDaemon(name: string, opts: SpawnOptions = {}): Promi
       throw MaestroError.of(
         'DAEMON_UNAVAILABLE',
         `daemon "${name}" (pid ${existing.pid}) exists but does not answer on ${existing.socketPath}; ` +
-          `stop it with \`maestro-d stop --name ${name}\``,
+          `stop it with \`maestro-d stop --daemon ${name}\``,
       )
     }
   }
@@ -95,7 +95,7 @@ async function spawnDaemon(name: string, opts: SpawnOptions): Promise<Ensured> {
   const logPath = startupLogPath(name)
   const logFd = fs.openSync(logPath, 'w', 0o600)
 
-  const args = ['serve', '--name', name]
+  const args = ['serve', '--daemon', name]
   if (opts.idleTimeout !== undefined) args.push('--idle-timeout', String(opts.idleTimeout))
   if (opts.http) args.push('--http', opts.http)
   if (opts.token) args.push('--token', opts.token)
