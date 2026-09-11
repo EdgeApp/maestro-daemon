@@ -190,9 +190,9 @@ maestro-d eval 'maestro.copiedText'
 | --- | --- |
 | `MAESTRO_D` | default `--daemon` |
 | `MAESTRO_DEVICE` | default `--device` |
-| `MAESTRO_D_HOME` | run-file root (default `~/.maestro-d`) |
+| `MAESTRO_D_HOME` | run-file root: sockets, logs, reports (default `~/.maestro-d`) |
 | `MAESTRO_D_BIN` | binary to spawn as the daemon (default: this executable) |
-| `MAESTRO_RUNNER_HOME` | maestro-runner home for drivers and caches (upstream) |
+| `MAESTRO_RUNNER_HOME` | install home: `bin/`, `drivers/`, `cache/`, `browsers/` (default: the parent of the binary's `bin/`, i.e. `~/.maestro-d`). Upstream's variable, upstream's name |
 
 ## Recipes
 

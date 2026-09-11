@@ -1,16 +1,17 @@
 .PHONY: gen gen-check build clean test test-race test-coverage test-coverage-check test-fuzz bench install check ci fmt imports fumpt staticcheck revive vet errcheck nilaway gosec ineffassign deadcode govulncheck
 
 # Build variables
-# maestro-d is maestro-runner plus the daemon commands; it installs next
-# to maestro-runner and shares its home (drivers/, cache/).
+# maestro-d is maestro-runner plus the daemon commands.
 BINARY_NAME=maestro-d
 VERSION?=$(shell git describe --tags --always --dirty 2>/dev/null || echo "dev")
 COMMIT?=$(shell git rev-parse --short HEAD 2>/dev/null || echo "none")
 BUILD_DATE?=$(shell date -u +"%Y-%m-%dT%H:%M:%SZ")
 LDFLAGS=-ldflags "-X github.com/devicelab-dev/maestro-runner/pkg/cli.Version=${VERSION} -X github.com/devicelab-dev/maestro-runner/pkg/cli.Commit=${COMMIT} -X github.com/devicelab-dev/maestro-runner/pkg/cli.BuildDate=${BUILD_DATE}"
 
-# Install directory (MAESTRO_RUNNER_HOME layout: bin/, cache/, drivers/)
-INSTALL_DIR=$(HOME)/.maestro-runner
+# Install directory. maestro-d keeps its own home rather than sharing
+# maestro-runner's, so the two can be installed side by side; the binary
+# resolves <home> as the parent of its bin/ directory.
+INSTALL_DIR=$(HOME)/.maestro-d
 
 # Go commands
 GOCMD=go

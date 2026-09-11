@@ -85,10 +85,13 @@ overrides the root):
 | `daemon.log` | the daemon's log |
 | `reports/<device>/<timestamp>/` | report directory of each attach: screenshots, hierarchies, `report.json` |
 
-The binary itself resolves maestro-runner's home (drivers, caches) the way
-maestro-runner does: `$MAESTRO_RUNNER_HOME`, else the parent of its `bin/`
-directory. `make build` installs it to `~/.maestro-runner/bin/maestro-d`
-next to a maestro-runner install so the two share drivers.
+Drivers, caches and downloaded browsers live in the same `~/.maestro-d`,
+under `bin/`, `drivers/`, `cache/` and `browsers/`. The binary resolves that
+home the way maestro-runner resolves its own: `$MAESTRO_RUNNER_HOME` (still
+upstream's variable name), else the parent of its `bin/` directory — so
+installing to `~/.maestro-d/bin/maestro-d` is all it takes. maestro-d
+deliberately keeps its own home rather than sharing `~/.maestro-runner`, so
+installing it cannot disturb an existing maestro-runner.
 
 ## Errors and exit codes
 
@@ -139,8 +142,8 @@ A failed step marked `optional: true` is *not* a failure: the result has
 ```sh
 git clone https://github.com/EdgeApp/maestro-d
 cd maestro-d
-make build          # → ~/.maestro-runner/bin/maestro-d (and copies drivers/)
-export PATH="$HOME/.maestro-runner/bin:$PATH"
+make build          # → ~/.maestro-d/bin/maestro-d (and copies drivers/)
+export PATH="$HOME/.maestro-d/bin:$PATH"
 maestro-d doctor
 ```
 

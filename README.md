@@ -116,13 +116,13 @@ no JVM.
 
 ## Install
 
-**From source** — Go 1.23+, installs next to maestro-runner and shares its
-drivers and caches:
+**From source** — Go 1.23+, into its own home so an existing maestro-runner
+install is untouched:
 
 ```sh
 git clone https://github.com/EdgeApp/maestro-d
-cd maestro-d && make build            # → ~/.maestro-runner/bin/maestro-d
-export PATH="$HOME/.maestro-runner/bin:$PATH"
+cd maestro-d && make build            # → ~/.maestro-d/bin/maestro-d
+export PATH="$HOME/.maestro-d/bin:$PATH"
 ```
 
 **From a release** — each platform tarball is a self-contained home
@@ -130,9 +130,9 @@ export PATH="$HOME/.maestro-runner/bin:$PATH"
 
 ```sh
 V=0.1.0; T=darwin-arm64                      # or darwin-x64, linux-arm64, linux-x64
-mkdir -p ~/.maestro-runner
+mkdir -p ~/.maestro-d
 curl -fsSL "https://github.com/EdgeApp/maestro-d/releases/download/maestro-d-v$V/maestro-d-$T-$V.tgz" \
-  | tar xz --strip-components=1 -C ~/.maestro-runner
+  | tar xz --strip-components=1 -C ~/.maestro-d
 ```
 
 Then check the toolchain and see what is plugged in:

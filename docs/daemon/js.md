@@ -57,11 +57,11 @@ platform package's `bin/maestro-d`, then `maestro-d` on `PATH`.
 After `make build` in a checkout:
 
 ```sh
-export MAESTRO_D_BIN=$HOME/.maestro-runner/bin/maestro-d
+export MAESTRO_D_BIN=$HOME/.maestro-d/bin/maestro-d
 ```
 
-or, to keep the npm binary but share maestro-runner's drivers and caches,
-`export MAESTRO_RUNNER_HOME=$HOME/.maestro-runner`.
+or, to keep the npm binary but reuse the drivers and caches of a `make
+build` install, `export MAESTRO_RUNNER_HOME=$HOME/.maestro-d`.
 
 ## Development
 

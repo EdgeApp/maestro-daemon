@@ -46,10 +46,9 @@ If you install with `--no-optional`, or run on another platform, put
 `maestro-d` on `PATH` or point `MAESTRO_D_BIN` at it.
 
 The platform package carries the device drivers and is the binary's home
-(caches land inside it, as with maestro-runner's own npm package). To share
-an existing `~/.maestro-runner/` instead, set
-`MAESTRO_RUNNER_HOME=$HOME/.maestro-runner` — or point `MAESTRO_D_BIN`
-at `~/.maestro-runner/bin/maestro-d` after `make build`.
+(caches land inside it, as with maestro-runner's own npm package). To reuse
+a `make build` install instead, set `MAESTRO_RUNNER_HOME=$HOME/.maestro-d`
+— or point `MAESTRO_D_BIN` at `~/.maestro-d/bin/maestro-d`.
 
 Device prerequisites are maestro-runner's: `adb` for Android, Xcode for iOS
 (`teamId` for a physical iPhone), a browser for web.

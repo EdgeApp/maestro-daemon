@@ -86,10 +86,10 @@ func New(cfg Config) (*Driver, error) {
 		cfg.ViewportH = defaultViewportH
 	}
 
-	// Cache downloaded browsers in ~/.maestro-runner/browsers/
+	// Cache downloaded browsers in ~/.maestro-d/browsers/
 	homeDir, _ := os.UserHomeDir()
 	if homeDir != "" {
-		launcher.DefaultBrowserDir = filepath.Join(homeDir, ".maestro-runner", "browsers")
+		launcher.DefaultBrowserDir = filepath.Join(homeDir, ".maestro-d", "browsers")
 	}
 
 	// Resolve which browser binary to use.
@@ -312,7 +312,7 @@ func EnsureBrowser(cfg Config) error {
 
 	homeDir, _ := os.UserHomeDir()
 	if homeDir != "" {
-		launcher.DefaultBrowserDir = filepath.Join(homeDir, ".maestro-runner", "browsers")
+		launcher.DefaultBrowserDir = filepath.Join(homeDir, ".maestro-d", "browsers")
 	}
 
 	b := launcher.NewBrowser()
