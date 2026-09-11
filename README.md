@@ -1,205 +1,165 @@
-> **This is [maestro-d](https://github.com/EdgeApp/maestro-d)** — a fork of
-> [maestro-runner](https://github.com/devicelab-dev/maestro-runner) that adds a persistent
-> daemon so every Maestro YAML command can be run one at a time from a shell, over REST, or
-> from JavaScript, without writing a flow file:
->
-> ```sh
-> maestro-d launchApp co.edgesecure.app --device 29271FDH200ABP
-> maestro-d tapOn "Create account"
-> maestro-d assertVisible "Welcome" --timeout 5000
-> ```
->
-> Everything upstream does still works unchanged (`maestro-d test flows/`). See
-> [docs/daemon/README.md](docs/daemon/README.md) for the daemon, [CLI](docs/daemon/cli.md),
-> [REST](docs/daemon/rest.md), [JavaScript](docs/daemon/js.md) and the
-> [command reference](docs/daemon/commands.md); [UPSTREAM.md](docs/daemon/UPSTREAM.md)
-> lists the upstream files this fork touches. The rest of this README is upstream's.
-
 <div align="center">
 
-# maestro-runner
+# maestro-d
 
----
+**Drive a real phone one command at a time — from a shell, over HTTP, or from JavaScript.**
 
-**Fast UI test automation for Android, iOS, Web, React Native, Flutter & Expo**
-<br>
-*Open-source Maestro alternative — single binary, no JVM. 100% free, no features behind a paywall.*
-<br>
-*Supports real iOS devices, simulators, emulators, desktop browsers, and cloud providers.*
-
-![3.6x faster](https://img.shields.io/badge/3.6x_faster-3a9d5c?style=for-the-badge) ![14x less memory](https://img.shields.io/badge/14x_less_memory-3a9d5c?style=for-the-badge)
-
-[![license](https://img.shields.io/badge/license-Apache_2.0-blue.svg?style=for-the-badge)](LICENSE)
-[![by](https://img.shields.io/badge/by-DeviceLab.dev-17a2b8.svg?style=for-the-badge)](https://devicelab.dev)
-
-[![npm](https://img.shields.io/npm/v/maestro-runner?label=npm&color=cb3837)](https://www.npmjs.com/package/maestro-runner)
-[![npm downloads](https://img.shields.io/npm/dm/maestro-runner)](https://www.npmjs.com/package/maestro-runner)
-[![CI](https://github.com/devicelab-dev/maestro-runner/actions/workflows/ci.yml/badge.svg)](https://github.com/devicelab-dev/maestro-runner/actions/workflows/ci.yml)
-[![codecov](https://codecov.io/gh/devicelab-dev/maestro-runner/branch/main/graph/badge.svg)](https://codecov.io/gh/devicelab-dev/maestro-runner)
-[![Go Report Card](https://goreportcard.com/badge/github.com/devicelab-dev/maestro-runner?v=2)](https://goreportcard.com/report/github.com/devicelab-dev/maestro-runner)
-
-<b><a href="https://open.devicelab.dev/maestro-runner">Documentation</a></b> | <b><a href="#install">Get Started</a></b> | <b><a href="https://open.devicelab.dev/maestro-runner/docs/cli-reference">CLI Reference</a></b> | <b><a href="https://open.devicelab.dev/maestro-runner/docs/flow-commands">Flow Commands</a></b> | <b><a href="CONTRIBUTING.md">Contributing</a></b>
+[CLI](docs/daemon/cli.md) · [REST API](docs/daemon/rest.md) · [JavaScript](docs/daemon/js.md) · [Commands](docs/daemon/commands.md) · [How it works](docs/daemon/README.md)
 
 </div>
 
----
+`maestro-d` is [maestro-runner](https://github.com/devicelab-dev/maestro-runner)
+plus a persistent daemon. Upstream runs a YAML flow start to finish; this fork
+keeps the device session open between calls, so every Maestro command is also a
+CLI command, a REST route and a JavaScript method — no flow file, no relaunching
+the app, no re-attaching the driver.
 
-- Runs Maestro YAML flows on real devices, emulators, simulators, and desktop browsers
-- Supports Android (UIAutomator2), iOS (WebDriverAgent), Web (Chrome CDP), and cloud (Appium)
-- Built-in parallel execution, HTML/JUnit/Allure reports, and JavaScript scripting
-- Addresses [78% of the top 100 most-discussed open issues](docs/maestro-issues-analysis.md) on Maestro's GitHub
+```sh
+maestro-d launchApp co.edgesecure.app --device 29271FDH200ABP   # ~4s: spawns the daemon, attaches
+maestro-d tapOn "Create account"                                # ~1s
+maestro-d assertVisible "Write these words down" --timeout 5000 # ~1s
+maestro-d get screenshot -o step.png
+```
 
-> **AI context:** [`llms.txt`](llms.txt) — structured summary for AI assistants answering questions about this project.
+The first call starts a background daemon and attaches the device. Every call
+after it reuses that session, so the loop is a second or two instead of a full
+flow run. Exit status is the result: `0` passed, `1` the step failed, and a JSON
+error envelope on stderr says why.
+
+Everything upstream does still works unchanged — `maestro-d test flows/` runs
+your existing YAML. See the [upstream README](docs/maestro-runner.md).
+
+## Why
+
+Writing a flow file, running it, and reading a report is the wrong loop for
+three cases this is built for:
+
+- **Exploring an app.** Tap, look, tap again — the same way you would by hand,
+  but scriptable and reproducible.
+- **Agents and scripts.** An LLM agent or a shell script can issue one command,
+  read the exit code and the JSON, and decide what to do next. `get hierarchy`
+  and `get screenshot` tell it what is on screen.
+- **Building a flow.** Get the steps right interactively, then paste them into
+  a `.yaml` file that upstream runs in CI.
+
+## Three ways in
+
+**CLI** — one subcommand per YAML command, flags for its fields:
+
+```sh
+maestro-d tapOn --id submit --index 1     # - tapOn: {id: submit, index: 1}
+maestro-d inputText "alice@example.com"
+maestro-d swipe --direction UP --duration 400
+maestro-d copyTextFrom --id balance --json | jq -r .data
+maestro-d run steps.yaml                  # a batch, still on the open session
+```
+
+**REST** — the same daemon over a unix socket, or TCP with a bearer token:
+
+```sh
+maestro-d start --daemon api --http 127.0.0.1:7788 --token "$TOKEN"
+curl -X POST -H "Authorization: Bearer $TOKEN" \
+  "http://127.0.0.1:7788/v1/devices/$UDID/commands/tapOn" -d '{"value": "Login"}'
+curl -N "http://127.0.0.1:7788/v1/events"      # server-sent step and device events
+```
+
+**JavaScript** — `npm i maestro-d`, one method per command, errors as `Error`s:
+
+```js
+import { MaestroD } from 'maestro-d'
+
+const m = await MaestroD.attach({ device: '29271FDH200ABP', appId: 'co.edgesecure.app' })
+await m.launchApp({ clearState: true })
+await m.tapOn('Get started')
+try {
+  await m.assertVisible('Create account', { timeout: 5_000 })
+} catch (e) {
+  if (e.code !== 'COMMAND_FAILED') throw e
+  console.log('not there:', e.result?.artifacts.screenshotAfter)
+}
+await m.detach()
+```
+
+All three speak the same protocol to the same daemon, so a script and a shell
+can share one device session.
+
+## What the fork adds
+
+- **A daemon per name.** `--daemon <name>` (or `$MAESTRO_D`) picks one; each is
+  a separate process holding its own devices, so parallel agents never collide.
+  A device attached elsewhere fails fast with `DEVICE_IN_USE` naming the owner.
+- **Many devices per daemon.** Attach a Pixel and an iPhone to one session and
+  address them with `--device`.
+- **Every YAML command, generated from the parser.** All ~90 step types, their
+  fields and docs come from the same structs the flow parser uses — CLI help,
+  the TypeScript methods and [commands.md](docs/daemon/commands.md) cannot drift
+  from what the runner actually accepts.
+- **Session state between calls.** Variables (`set`, `-e`), `eval` for
+  JavaScript in the flow engine, and `${VAR}` expansion, all persisting across
+  commands.
+- **Inspection.** `get screenshot`, `get hierarchy` (normalized the same way on
+  Android, iOS and web, with `--find` and `--compact`), `get info`, `get state`.
+- **Device lifecycle.** `device list`, `device start` to boot a simulator or
+  emulator, `device stop`, `ps`, and automatic shutdown of anything the daemon
+  booted.
+- **Machine-readable failure.** One error table shared by all three interfaces:
+  `COMMAND_FAILED` 1/422, `USAGE` 2/400, `DAEMON_UNAVAILABLE` 3/503,
+  `DEVICE_ERROR` 4/502, `DEVICE_IN_USE` 5/409, `INTERRUPTED` 130/499.
+- **Events.** Server-sent events for every step and device transition, resumable
+  with `Last-Event-ID`.
+
+And everything upstream already gives it: Android via UIAutomator2 or the
+DeviceLab on-device driver, iOS simulators **and physical devices** via
+WebDriverAgent, desktop browsers via CDP, cloud grids via Appium, React Native
+and Flutter element finding, HTML/JUnit/Allure reports, and a single binary with
+no JVM.
 
 ## Install
 
-**npm** — for React Native, Expo, or any project that already has a `package.json`:
+**From source** — Go 1.23+, installs next to maestro-runner and shares its
+drivers and caches:
 
-```bash
-npx maestro-runner test flows/          # no install step
-npm install --save-dev maestro-runner   # or pin it in the project
+```sh
+git clone https://github.com/EdgeApp/maestro-d
+cd maestro-d && make build            # → ~/.maestro-runner/bin/maestro-d
+export PATH="$HOME/.maestro-runner/bin:$PATH"
 ```
 
-Pinning it means every machine and every CI job runs the same version with no separate bootstrap. There is no postinstall and nothing is downloaded at install time: the binary for your platform arrives as an ordinary optional dependency npm selects by `os` and `cpu`, so installs work offline, behind a proxy, and in CI that blocks postinstall network access.
+**From a release** — each platform tarball is a self-contained home
+(`bin/maestro-d`, `drivers/`):
 
-**Shell** — everywhere else:
-
-```bash
-curl -fsSL https://open.devicelab.dev/install/maestro-runner | bash
-
-# A specific version
-curl -fsSL https://open.devicelab.dev/install/maestro-runner | bash -s -- --version 1.1.25
+```sh
+V=0.1.0; T=darwin-arm64                      # or darwin-x64, linux-arm64, linux-x64
+mkdir -p ~/.maestro-runner
+curl -fsSL "https://github.com/EdgeApp/maestro-d/releases/download/maestro-d-v$V/maestro-d-$T-$V.tgz" \
+  | tar xz --strip-components=1 -C ~/.maestro-runner
 ```
 
-Both give you the same binary. macOS and Linux, arm64 and x64; on Windows, use WSL.
+Then check the toolchain and see what is plugged in:
 
-## First run
-
-```bash
-maestro-runner doctor     # check the toolchain and hear exactly what is missing
-maestro-runner devices    # what this machine can drive right now
+```sh
+maestro-d doctor
+maestro-d devices
 ```
 
-## Run Tests
+Android testing needs `adb`; iOS needs Xcode's command-line tools (and
+`--team-id` for physical devices); web testing needs Chrome or Chromium.
 
-```bash
-maestro-runner test flow.yaml                                           # Android (default)
-maestro-runner --platform ios test flow.yaml                            # iOS
-maestro-runner --platform web test flow.yaml                            # Desktop browser (Chrome)
-maestro-runner --app-file app.apk test flows/                           # Install app and run
-maestro-runner --driver appium --appium-url <server-url> test flow.yaml # Appium
-maestro-runner test --parallel 3 flows/                                 # Parallel on 3 devices
-```
+## Documentation
 
-## Key Features
-
-- **Zero migration** — Runs your existing Maestro YAML flows as-is, no changes needed
-- **Real iOS device testing** — Supports physical iOS devices, not just simulators [Guide →](https://devicelab.dev/blog/maestro-ios-real-device-testing)
-- **Cloud testing** — BrowserStack, Sauce Labs, LambdaTest, TestingBot via Appium driver [Guide →](https://devicelab.dev/blog/run-maestro-flows-any-cloud)
-- **Desktop browser testing** — Run Maestro flows on Chrome/Chromium via CDP. Supports `css`, `xpath`, `id`, and `text` selectors with `--platform web` [Guide →](https://devicelab.dev/open-source/maestro-runner/docs/web-testing)
-- **React Native & Flutter** — Smart element finding for RN testIDs and Flutter semantics [Guide →](https://devicelab.dev/blog/flutter-testing-maestro-patrol-appium)
-- **DeviceLab driver** — Optional on-device Android driver via WebSocket, ~2x faster than UIAutomator2 and ~5x faster than Maestro CLI. Just add `--driver devicelab`
-- **Parallel execution** — Dynamic work distribution across devices, not static sharding. Faster devices pick up more tests automatically, so no device sits idle
-- **App install built-in** — `--app-file app.apk` installs the app before testing, so you always test the right build
-- **Wide OS compatibility** — Android 5.0+ (API 21+) and iOS 12.0+, no version restrictions
-- **Reports** — HTML, JUnit XML, and Allure-compatible reports out of the box
-- **Clear error messages** — `element not found: text="Login"` instead of `io.grpc.StatusRuntimeException: UNKNOWN`
-- **Pre-flight validation** — Catches flow errors, circular dependencies, and missing files before execution starts
-- **Fast element finding** — Native selectors, clickable parent traversal, regex matching, smarter visibility
-- **Reliable text input** — Direct ADB input with Unicode support, no dropped characters
-- **scrollUntilVisible** — Native scroll implementation that reliably finds off-screen elements
-- **Relative selectors** — Find elements by position: below, above, leftOf, rightOf, childOf
-- **JavaScript scripting** — Embedded JS runtime with HTTP client for dynamic test logic, no external dependencies
-- **Configurable timeouts** — Per-command and per-flow timeouts, `--wait-for-idle-timeout 0` to disable
-- **Lightweight** — Single binary, no JVM required
-
-## Supported Platforms & Drivers
-
-| Driver | Platform | Description |
-|--------|----------|-------------|
-| **UIAutomator2** | Android | Direct connection to device. Default driver, no external server needed. |
-| **DeviceLab** | Android | `--driver devicelab`. On-device WebSocket driver, ~2x faster than UIAutomator2. |
-| **WDA (WebDriverAgent)** | iOS | Auto-selected with `--platform ios`. Supports simulators and physical devices. |
-| **Browser (CDP)** | Web | `--platform web`. Chrome/Chromium automation via Chrome DevTools Protocol. |
-| **Appium** | Android & iOS | `--driver appium`. For cloud testing providers and existing Appium infrastructure. |
-
-### DeviceLab Driver (Android)
-
-The DeviceLab driver is an alternative Android driver that runs automation directly on the device via WebSocket. It skips the UIAutomator2 HTTP layer, resulting in ~2x faster test execution compared to the default driver — and ~5x faster than Maestro CLI.
-
-```
-Benchmark: 9 flows, 163 steps on Pixel 4a (Android 13)
-
-  DeviceLab:     1m 12s
-  UIAutomator2:  2m 24s
-  Maestro CLI:   4m 22s
-```
-
-```bash
-maestro-runner --driver devicelab --platform android test flows/
-```
-
-All existing Maestro YAML flows work as-is — no changes needed. The driver also includes bounds stabilization for animated elements and improved special character handling in text selectors.
-
-## CI/CD Integration
-
-maestro-runner is built for CI/CD pipelines — single binary, no JVM startup, low memory footprint. Works with GitHub Actions, GitLab CI, Jenkins, CircleCI, and any CI system that supports Android emulators or iOS simulators.
-
-```bash
-# CI example: auto-start emulator, run tests, shutdown after
-maestro-runner --auto-start-emulator --parallel 2 flows/
-```
-
-## Flow Config
-
-maestro-runner extends the standard Maestro flow YAML with additional fields:
-
-```yaml
-commandTimeout: 10000       # Default per-command timeout (ms)
-waitForIdleTimeout: 3000    # Device idle wait (ms), 0 to disable
----
-- launchApp: com.example.app
-- tapOn: "Login"
-- assertVisible: "Welcome"
-```
-
-## Visual Regression (`assertScreenshot`)
-
-`assertScreenshot` compares the current screen (optionally cropped with `cropOn`) against a reference PNG.
-
-- **First run:** if the reference file is missing, maestro-runner writes the captured screenshot as the new baseline and passes.
-- **Re-baseline:** overwrite existing baselines with `--update-screenshots` (or `MAESTRO_UPDATE_SCREENSHOTS=true`).
-- On mismatch, a `{name}_diff.png` overlay is written next to the reference.
-- Pixel comparison is device-, resolution-, and OS-specific — pin your device config and set `thresholdPercentage` deliberately (default `95`).
-
-```bash
-maestro-runner test flows/visual.yaml                  # seeds missing baselines
-maestro-runner test --update-screenshots flows/visual.yaml
-```
-
-## Requirements
-
-- **Android testing:** `adb` (Android SDK Platform-Tools)
-- **iOS testing:** Xcode command-line tools (`xcrun`)
-- **Web/Browser testing:** Chrome or Chromium
-- **Cloud & Appium testing:** Appium 2.x or 3.x — works with local Appium servers and cloud providers (BrowserStack, Sauce Labs, LambdaTest, TestingBot)
-
-## Cloud Providers
-
-maestro-runner runs Maestro YAML flows on cloud device grids via the Appium driver. Pass the provider's hub URL and a capabilities JSON file:
-
-```bash
-maestro-runner --driver appium --appium-url <HUB_URL> --caps caps.json test flows/
-```
-
-- **[TestingBot](docs/cloud-providers/testingbot.md)** — Setup guide for running on TestingBot's real device cloud
-- **[Sauce Labs](docs/cloud-providers/saucelabs.md)** — Setup guide for running on Sauce Labs Appium cloud
-
-## Contributing
-
-See [CONTRIBUTING.md](CONTRIBUTING.md) for guidelines.
+| | |
+| --- | --- |
+| [docs/daemon/README.md](docs/daemon/README.md) | How the daemon works: lifecycle, ownership, run files, error table |
+| [docs/daemon/cli.md](docs/daemon/cli.md) | Every CLI command and flag |
+| [docs/daemon/rest.md](docs/daemon/rest.md) | REST reference with curl examples |
+| [docs/daemon/js.md](docs/daemon/js.md) | The npm package |
+| [docs/daemon/commands.md](docs/daemon/commands.md) | All YAML commands and their fields |
+| [docs/daemon/UPSTREAM.md](docs/daemon/UPSTREAM.md) | Which upstream files the fork touches, and how to rebase |
+| [docs/maestro-runner.md](docs/maestro-runner.md) | Upstream's README — the flow runner, drivers, cloud providers |
 
 ## License
 
-Apache License 2.0 — see [LICENSE](LICENSE).
-
+Apache License 2.0 — see [LICENSE](LICENSE). A fork of
+[devicelab-dev/maestro-runner](https://github.com/devicelab-dev/maestro-runner);
+the Go module path is deliberately unchanged so rebasing stays a plain
+`git rebase`.
