@@ -176,18 +176,27 @@ describe('commands', () => {
     assert.equal(r.ok, true)
   })
 
-  // The method arguments become the REST body: one flat object of the
-  // command's fields, parameters and modifiers together.
-  test('a call maps onto the REST body for the same command', () => {
-    assert.deepEqual(buildValue('tapOn', 'Login', { timeout: 5000, optional: true }), {
-      text: 'Login',
-      timeout: 5000,
-      optional: true,
-    })
-    assert.deepEqual(buildValue('swipe', undefined, { direction: 'UP', duration: 400 }), {
+  // The documented form is one object of the command's fields, and it is
+  // sent unchanged: a call and the REST body are the same thing written
+  // twice.
+  test('an object of fields is the REST body', () => {
+    const body = { text: 'Login', timeout: 5000, optional: true }
+    assert.deepEqual(buildValue('tapOn', body, {}), body)
+    assert.deepEqual(buildValue('swipe', { direction: 'UP', duration: 400 }, {}), {
       direction: 'UP',
       duration: 400,
     })
+    // opts merge into that same object.
+    assert.deepEqual(buildValue('tapOn', { text: 'Login' }, { timeout: 5000, optional: true }), body)
+    assert.deepEqual(buildValue('tapOn', 'Login', { timeout: 5000, optional: true }), body)
+  })
+
+  // The YAML shorthand goes to the daemon as written rather than being
+  // expanded here: the parser accepts spellings the map form has no field
+  // for, so only it can decide what a bare value means.
+  test('a bare value is passed through as the YAML shorthand', () => {
+    assert.equal(buildValue('tapOn', 'Login', {}), 'Login')
+    assert.equal(buildValue('launchApp', 'co.edgesecure.app', {}), 'co.edgesecure.app')
   })
 
   // TypeScript rejects an unknown field at compile time; from plain

@@ -9,15 +9,15 @@ import { MaestroD } from 'maestro-d'
 
 const m = await MaestroD.attach({ device: '29271FDH200ABP', appId: 'co.edgesecure.app' })
 await m.launchApp({ clearState: true })
-await m.tapOn('Get Started')
-await m.inputText('alice@example.com')
-await m.assertVisible('Welcome', { timeout: 10_000 })
+await m.tapOn({ text: 'Get Started' })
+await m.inputText({ text: 'alice@example.com' })
+await m.assertVisible({ text: 'Welcome', timeout: 10_000 })
 const png = await m.screenshot()
 ```
 
 Every command from the Maestro YAML vocabulary (`tapOn`, `assertVisible`,
-`swipe`, `runFlow`, …) is a method with the same name, taking the same value
-the YAML would hold. Behind the scenes the first call starts a background
+`swipe`, `runFlow`, …) is a method with the same name, taking an object of
+that command's fields — the same object the REST API takes. Behind the scenes the first call starts a background
 **daemon** (`maestro-d serve`) that keeps the device driver open; every
 later call — from this process, a later `node` run, or the `maestro-d`
 CLI — is one HTTP request to it. The daemon is
@@ -134,35 +134,45 @@ One per YAML command, typed from the daemon's command table
 tapOn(value?: string | TapOnParams, opts?: TapOnParams & CallOptions): Promise<StepResult>
 ```
 
-- A **bare value** is the YAML shorthand: `tapOn('Login')` is `- tapOn: Login`,
-  `swipe('UP')`, `setDarkMode(true)`. Commands with no shorthand
-  (`setLocation`, `assertCondition`, …) take an object.
-- An **object** is the YAML map: `tapOn({ id: 'submit', index: 1 })`.
-- **`opts`** adds fields to either form — `tapOn('Login', { optional: true })`
-  is `{ text: 'Login', optional: true }` — plus the per-call
-  `wait`, `cwd` and `signal` (see below). Every command accepts `optional`,
-  `label`, `timeout` and `platform` (skip the step on other platforms).
-- **Value-less** commands take nothing: `back()`, `hideKeyboard()`,
-  `waitForAnimationToEnd()`.
-- Compound commands take inline steps: `repeat({ times: 3, commands: [{ tapOn: 'Next' }] })`,
-  `runFlow({ file: 'login.yaml', env: { USER: 'alice' } })`,
-  `retry({ maxRetries: '2', commands: [...] })`.
-
-Wrong shapes throw `TypeError` before anything is sent. `command(name, value?, opts?)`
-is the untyped form for commands the library does not know yet.
-
-A call is one REST request, and the arguments are the body: value and `opts`
-merge into a single flat object of the command's fields, which is what
-`POST /v1/devices/{id}/commands/{name}` takes.
+**Pass an object of the command's fields.** It is the same object the REST
+route takes, so a call and a request are the same thing written twice:
 
 ```js
-await dev.tapOn('Login', { timeout: 5000, optional: true })
+await dev.tapOn({ text: 'Login', timeout: 5000, optional: true })
 // POST /v1/devices/{id}/commands/tapOn
 // {"text": "Login", "timeout": 5000, "optional": true}
+
+await dev.launchApp({ appId: 'co.edgesecure.app', clearState: true })
+await dev.swipe({ direction: 'UP', duration: 400 })
+await dev.assertVisible({ id: 'balance', timeout: 10_000 })
 ```
 
-TypeScript rejects a field the command does not have; from plain JavaScript
-the daemon does, with `MaestroError` code `USAGE`.
+Every command accepts `optional`, `label`, `timeout` and `platform` (skip
+the step on other platforms); the rest are per command, typed as
+`<Command>Params` and listed in the [command reference][commands].
+
+- **The YAML shorthand** works too, as it does in a flow file and on the
+  CLI: `tapOn('Login')` is `- tapOn: Login`, `launchApp('co.edgesecure.app')`,
+  `swipe('UP')`, `setDarkMode('dark')`. Which field it fills differs per
+  command — `text` for `tapOn`, `appId` for `launchApp`, `path` for
+  `takeScreenshot`, `condition` for `assertTrue` — so the object form is the
+  one to reach for when it is not obvious. It is sent as written, not
+  expanded client-side, because the parser accepts spellings the map form
+  has no field for (`setDarkMode: dark` beside `{ enabled: true }`).
+- **`opts`** adds fields to either form and carries the per-call `wait`,
+  `cwd` and `signal` (see below).
+- **Value-less** commands take nothing: `back()`, `hideKeyboard()`,
+  `waitForAnimationToEnd()`.
+- **Compound** commands take inline steps:
+  `repeat({ times: 3, commands: [{ tapOn: { text: 'Next' } }] })`,
+  `runFlow({ file: 'login.yaml', env: { USER: 'alice' } })`.
+
+Wrong shapes throw `TypeError` before anything is sent. TypeScript rejects a
+field the command does not have; from plain JavaScript the daemon does, with
+`MaestroError` code `USAGE`. `command(name, value?, opts?)` is the untyped
+form for commands the library does not know yet.
+
+[commands]: https://github.com/EdgeApp/maestro-d/blob/main/docs/daemon/commands.md
 
 #### Batches
 

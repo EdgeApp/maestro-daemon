@@ -71,9 +71,9 @@ import { MaestroD } from 'maestro-d'
 
 const m = await MaestroD.attach({ device: '29271FDH200ABP', appId: 'co.edgesecure.app' })
 await m.launchApp({ clearState: true })
-await m.tapOn('Get started')
+await m.tapOn({ text: 'Get started' })
 try {
-  await m.assertVisible('Create account', { timeout: 5_000 })
+  await m.assertVisible({ text: 'Create account', timeout: 5_000 })
 } catch (e) {
   if (e.code !== 'COMMAND_FAILED') throw e
   console.log('not there:', e.result?.artifacts.screenshotAfter)
