@@ -96,6 +96,12 @@ type Command struct {
 	Fields    []Field
 }
 
+// freeForm reports whether a command's value is a map of arbitrary keys
+// rather than the fields declared on its struct — defineVariables, whose
+// value is the variable map itself. Base fields are added at render time,
+// so a command with none of its own is free-form.
+func freeForm(c Command) bool { return len(c.Fields) == 0 && !c.ValueLess }
+
 type structInfo struct {
 	name   string
 	doc    string
@@ -218,9 +224,9 @@ func main() {
 	sort.Slice(cmds, func(i, j int) bool { return cmds[i].Name < cmds[j].Name })
 
 	outputs := map[string][]byte{
-		filepath.Join(root, "pkg", "daemon", "commands_gen.go"):                         renderGo(cmds),
+		filepath.Join(root, "pkg", "daemon", "commands_gen.go"):                    renderGo(cmds),
 		filepath.Join(root, "npm", "maestro-d", "src", "generated", "commands.ts"): renderTS(cmds),
-		filepath.Join(root, "docs", "daemon", "commands.md"):                            renderMD(cmds),
+		filepath.Join(root, "docs", "daemon", "commands.md"):                       renderMD(cmds),
 	}
 	stale := false
 	for path, data := range outputs {
@@ -571,11 +577,11 @@ func renderGoSource(cmds []Command) []byte {
 	var b bytes.Buffer
 	fmt.Fprintf(&b, "// %s\n\npackage daemon\n\n", header)
 	b.WriteString("// CommandSpec describes one YAML command's shape for the CLI and docs.\n")
-	b.WriteString("type CommandSpec struct {\n\tName string\n\t// Scalar is the yaml key a bare scalar value maps to (\"\" = none).\n\tScalar string\n\t// ValueLess commands ignore their value (`- back`).\n\tValueLess bool\n\t// Compound commands carry nested steps (repeat, retry, runFlow).\n\tCompound bool\n\t// Doc is the one-line description from the Go struct comment.\n\tDoc string\n\t// Fields are the yaml keys of the map form.\n\tFields []FieldSpec\n}\n\n")
+	b.WriteString("type CommandSpec struct {\n\tName string\n\t// Scalar is the yaml key a bare scalar value maps to (\"\" = none).\n\tScalar string\n\t// ValueLess commands ignore their value (`- back`).\n\tValueLess bool\n\t// Compound commands carry nested steps (repeat, retry, runFlow).\n\tCompound bool\n\t// FreeForm commands take arbitrary keys rather than the fields below\n\t// (defineVariables: NAME -> value), so their keys are not validated.\n\tFreeForm bool\n\t// Doc is the one-line description from the Go struct comment.\n\tDoc string\n\t// Fields are the yaml keys of the map form.\n\tFields []FieldSpec\n}\n\n")
 	b.WriteString("// FieldSpec is one yaml key of a command's map form.\ntype FieldSpec struct {\n\tKey  string\n\tType string // Go type\n\tDoc  string\n}\n\n")
 	b.WriteString("// CommandSpecs indexes every command by name.\nvar CommandSpecs = map[string]CommandSpec{\n")
 	for _, c := range cmds {
-		fmt.Fprintf(&b, "\t%q: {Name: %q, Scalar: %q, ValueLess: %v, Compound: %v, Doc: %q, Fields: []FieldSpec{\n", c.Name, c.Name, c.Scalar, c.ValueLess, c.Compound, c.Doc)
+		fmt.Fprintf(&b, "\t%q: {Name: %q, Scalar: %q, ValueLess: %v, Compound: %v, FreeForm: %v, Doc: %q, Fields: []FieldSpec{\n", c.Name, c.Name, c.Scalar, c.ValueLess, c.Compound, freeForm(c), c.Doc)
 		for _, f := range c.Fields {
 			fmt.Fprintf(&b, "\t\t{Key: %q, Type: %q, Doc: %q},\n", f.Key, f.GoType, f.Doc)
 		}
@@ -594,7 +600,7 @@ func renderTS(cmds []Command) []byte {
 		if c.Doc != "" {
 			fmt.Fprintf(&b, "/** %s */\n", c.Doc)
 		}
-		if len(c.Fields) == 0 && !c.ValueLess {
+		if freeForm(c) {
 			// A free-form map (defineVariables): NAME → value.
 			fmt.Fprintf(&b, "export type %s = Record<string, string>\n\n", tn)
 			continue

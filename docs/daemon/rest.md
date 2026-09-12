@@ -238,22 +238,45 @@ cannot see it and the daemon does not hold it.
 
 ### `POST /v1/devices/{id}/commands/{name}`
 
-Runs one command. `{name}` is any command from the
-[command reference](commands.md) (`tapOn`, `inputText`, `assertVisible`,
-…) and the body is the JSON form of the value the command would have in
-YAML — a string, number, object, list, or nothing.
+The command name is the last element of the path; everything else is in the
+body. `{name}` is any command from the [command reference](commands.md)
+(`tapOn`, `inputText`, `assertVisible`, …) and the body is a JSON object of
+that command's fields — its parameters and its modifiers together, exactly
+the keys the YAML map form takes:
 
 ```sh
 C=$D/v1/devices/29271FDH200ABP/commands
-curl -s -H "$H" $C/launchApp   -d '"co.edgesecure.app"'
-curl -s -H "$H" $C/tapOn       -d '"Login"'
-curl -s -H "$H" $C/tapOn       -d '{"id":"submit","index":1,"optional":true}'
-curl -s -H "$H" $C/inputText   -d '"alice@example.com"'
+curl -s -H "$H" $C/tapOn       -d '{"text":"Login"}'
+curl -s -H "$H" $C/tapOn       -d '{"id":"submit","index":1,"timeout":5000,"optional":true}'
+curl -s -H "$H" $C/tapOn       -d '{"text":"Delete","childOf":{"id":"row-3"},"label":"delete row"}'
 curl -s -H "$H" $C/swipe       -d '{"direction":"UP","duration":400}'
-curl -s -H "$H" $C/back
-curl -s -H "$H" $C/repeat      -d '{"times":3,"commands":[{"tapOn":"Next"},"waitForAnimationToEnd"]}'
+curl -s -H "$H" $C/launchApp   -d '{"appId":"co.edgesecure.app","clearState":true}'
 curl -s -H "$H" $C/copyTextFrom -d '{"id":"balance"}' | jq -r .data
 ```
+
+`optional`, `label`, `timeout` and `platform` are accepted by every command;
+the rest are per command and listed in [commands.md](commands.md) or by
+`maestro-d commands <name>`.
+
+**Unknown fields are rejected** with `USAGE` (400) naming the key, so a typo
+is an error rather than a step that quietly does the wrong thing:
+
+```console
+$ curl -s -H "$H" $C/tapOn -d '{"txt":"Login"}' | jq -r .error.message
+tapOn has no field "txt"; it takes text, id, width, height, … and 32 more (`maestro-d commands tapOn` lists them all)
+```
+
+Three shorthands are accepted for brevity, all equivalent to the object form:
+
+```sh
+curl -s -H "$H" $C/tapOn      -d '"Login"'      # bare scalar → the command's scalar field (text)
+curl -s -H "$H" $C/back                          # no body → a value-less command
+curl -s -H "$H" $C/repeat     -d '{"times":3,"commands":[{"tapOn":{"text":"Next"}},"waitForAnimationToEnd"]}'
+```
+
+Which field a bare scalar fills is in [commands.md](commands.md) ("a bare
+value sets `text`"). Nested steps inside `commands` / `elseCommands` are
+validated the same way as the outer command.
 
 | query | |
 | --- | --- |
@@ -304,6 +327,9 @@ curl -s -H "$H" $D/v1/devices/29271FDH200ABP/steps -d '{
 ```
 
 `steps` is a JSON list of steps (or `yaml` a string holding the YAML list).
+Each entry is `{"<command>": <body>}`, where `<body>` is what the single
+command route takes, so the same field checking applies; a bad field reports
+which step it was in (`step 2: tapOn has no field "txt"`).
 Steps run in order in the device's session; the first failure stops the
 batch unless `continueOnError` is set. Either way the response is a
 batch result — `results` holds every step that ran, `error` is the first

@@ -59,7 +59,8 @@ maestro-d run steps.yaml                  # a batch, still on the open session
 ```sh
 maestro-d start --daemon api --http 127.0.0.1:7788 --token "$TOKEN"
 curl -X POST -H "Authorization: Bearer $TOKEN" \
-  "http://127.0.0.1:7788/v1/devices/$UDID/commands/tapOn" -d '{"value": "Login"}'
+  "http://127.0.0.1:7788/v1/devices/$UDID/commands/tapOn" \
+  -d '{"text": "Login", "timeout": 5000, "optional": true}'
 curl -N "http://127.0.0.1:7788/v1/events"      # server-sent step and device events
 ```
 

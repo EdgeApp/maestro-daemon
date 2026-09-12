@@ -586,7 +586,7 @@ func (s *Server) handleCommand(w http.ResponseWriter, r *http.Request) {
 	if cwd != "" {
 		src = filepath.Join(cwd, "request.yaml")
 	}
-	step, err := flow.BuildStep(name, value, src)
+	step, err := buildStep(name, value, src)
 	if err != nil {
 		writeError(w, WrapErr(CodeUsage, err))
 		return

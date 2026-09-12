@@ -151,6 +151,19 @@ tapOn(value?: string | TapOnParams, opts?: TapOnParams & CallOptions): Promise<S
 Wrong shapes throw `TypeError` before anything is sent. `command(name, value?, opts?)`
 is the untyped form for commands the library does not know yet.
 
+A call is one REST request, and the arguments are the body: value and `opts`
+merge into a single flat object of the command's fields, which is what
+`POST /v1/devices/{id}/commands/{name}` takes.
+
+```js
+await dev.tapOn('Login', { timeout: 5000, optional: true })
+// POST /v1/devices/{id}/commands/tapOn
+// {"text": "Login", "timeout": 5000, "optional": true}
+```
+
+TypeScript rejects a field the command does not have; from plain JavaScript
+the daemon does, with `MaestroError` code `USAGE`.
+
 #### Batches
 
 | | |

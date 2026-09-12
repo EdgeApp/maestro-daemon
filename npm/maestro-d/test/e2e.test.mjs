@@ -176,6 +176,33 @@ describe('commands', () => {
     assert.equal(r.ok, true)
   })
 
+  // The method arguments become the REST body: one flat object of the
+  // command's fields, parameters and modifiers together.
+  test('a call maps onto the REST body for the same command', () => {
+    assert.deepEqual(buildValue('tapOn', 'Login', { timeout: 5000, optional: true }), {
+      text: 'Login',
+      timeout: 5000,
+      optional: true,
+    })
+    assert.deepEqual(buildValue('swipe', undefined, { direction: 'UP', duration: 400 }), {
+      direction: 'UP',
+      duration: 400,
+    })
+  })
+
+  // TypeScript rejects an unknown field at compile time; from plain
+  // JavaScript the daemon rejects it, with the same USAGE code the CLI uses.
+  test('an unknown field is USAGE, not a silently wrong step', async () => {
+    await rejects(
+      () => dev.tapOn('Login', { txt: 'Login' }),
+      (err) => {
+        assert.ok(isMaestroError(err, 'USAGE'), String(err))
+        assert.match(err.message, /tapOn has no field "txt"/)
+        return true
+      },
+    )
+  })
+
   test('value-less commands take no arguments', async () => {
     const r = await dev.back()
     assert.equal(r.type, 'back')

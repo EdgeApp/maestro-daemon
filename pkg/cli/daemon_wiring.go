@@ -25,7 +25,7 @@ const UpstreamVersion = "1.1.26"
 // driver and device code.
 func daemonDeps() daemon.Deps {
 	return daemon.Deps{
-		Version:     Version,
+		Version:            Version,
 		NewDriver:          daemonNewDriver,
 		ListDevices:        daemonListDevices,
 		NormalizeHierarchy: NormalizeHierarchy,

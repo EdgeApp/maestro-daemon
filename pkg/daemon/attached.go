@@ -219,7 +219,7 @@ func resolveSteps(req StepsRequest) ([]flow.Step, *Error) {
 func stepFromValue(raw any, src string) (flow.Step, error) {
 	switch v := raw.(type) {
 	case string:
-		return flow.BuildStep(v, nil, src)
+		return buildStep(v, nil, src)
 	case map[string]any:
 		name := ""
 		for k := range v {
@@ -231,7 +231,7 @@ func stepFromValue(raw any, src string) (flow.Step, error) {
 		if name == "" {
 			return nil, fmt.Errorf("no known command in %v", keys(v))
 		}
-		return flow.BuildStep(name, v[name], src)
+		return buildStep(name, v[name], src)
 	default:
 		return nil, fmt.Errorf("step must be a string or an object, got %T", raw)
 	}
